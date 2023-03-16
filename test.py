@@ -10,7 +10,7 @@ def Generate_Naive_Testset_Cropping(img):
     print("image shape is:", str(img.shape)[1:-1])
     IMG_WIDTH = img.shape[0]
     IMG_LENGTH = img.shape[1]
-    BORDER = IMG_WIDTH // 3 
+    BORDER = IMG_WIDTH // 5 
     MOTHER_WIDTH = IMG_WIDTH - 2 * BORDER
     MOTHER_LENGTH = IMG_LENGTH - 2 * BORDER
     if MOTHER_LENGTH < 0 or MOTHER_WIDTH < 0:
@@ -23,8 +23,8 @@ def Generate_Naive_Testset_Cropping(img):
     img5 = img[IMG_WIDTH - round(3/2* BORDER):IMG_WIDTH - BORDER //2 ,IMG_LENGTH - round(3/2*BORDER):IMG_LENGTH - BORDER // 2,:] #img5 should have 50% overlap with img3
     imgList = [img1, img2, img3, img4, img5]
     for count,image in enumerate(imgList, start = 1):
-        filename = 'img'+ str(count)+'.jpeg'
-        cv.imwrite( filename, image)
+        filename = './data/cropped_img'+ str(count)+'.jpeg'
+        cv.imwrite(filename, image)
     return imgList
 
 def get_center(img):
@@ -89,7 +89,7 @@ def Generate_Naive_Testset_Scaling(img):
         zoomed_img = cv.resize(img, new_size, interpolation=cv.INTER_AREA)
         imgList.append(zoomed_img)
     for count,image in enumerate(imgList, start = 1):
-        filename = 'zoomed_img'+ str(count)+'.jpeg'
+        filename = './data/zoomed_img'+ str(count)+'.jpeg'
         cv.imwrite( filename, image)
     return imgList
 
@@ -128,7 +128,8 @@ def Generate_Naive_Testset_Translation(img):
 def Generate_Testset_One(img):
     IMG_WIDTH = img.shape[0]
     IMG_LENGTH = img.shape[1]
-    WINDOW_SIZE = 3000 
+    WINDOW_SIZE = 1250 
+    assert (IMG_LENGTH > WINDOW_SIZE and IMG_WIDTH>WINDOW_SIZE)
     mother_center = get_center(img) 
     #mother image is windowed original image
     window_start_X= int(np.rint(mother_center[0] - WINDOW_SIZE//2))
@@ -168,14 +169,14 @@ def Generate_Testset_One(img):
     imgList.append(zoomed_img)
     #write image
     for count,image in enumerate(imgList, start = 1):
-        filename = 'testset1_'+ str(count)+'.jpeg'
+        filename = './data/testset1_'+ str(count)+'.jpeg'
         cv.imwrite( filename, image)
     return imgList
 
 def Generate_Testset_Two(img):
     IMG_WIDTH = img.shape[0]
     IMG_LENGTH = img.shape[1]
-    WINDOW_SIZE = 1440
+    WINDOW_SIZE = 2880
     mother_center = get_center(img) 
     #mother image is windowed original image
     window_start_X= int(np.rint(mother_center[0] - WINDOW_SIZE//2))
@@ -184,12 +185,12 @@ def Generate_Testset_Two(img):
     window_end_Y = int(np.rint(mother_center[1] + WINDOW_SIZE //2))
     mother = img[window_start_Y:window_end_Y,window_start_X:window_end_X]
     imgList = [mother]
-    #image2 is mother image scale up by 2
+    #image2 is mother image scale down by 2
     SCALING_FACTOR = 2
     MOTHER_WIDTH = mother.shape[0]
     MOTHER_LENGTH = mother.shape[1]
-    new_width = MOTHER_WIDTH*SCALING_FACTOR
-    new_length = MOTHER_LENGTH*SCALING_FACTOR
+    new_width = MOTHER_WIDTH//SCALING_FACTOR
+    new_length = MOTHER_LENGTH//SCALING_FACTOR
     new_size = (new_length, new_width)
     img2 = cv.resize(mother, new_size, interpolation=cv.INTER_LANCZOS4)
     imgList.append(img2)
@@ -231,7 +232,7 @@ def Generate_Testset_Two(img):
     imgList.append(img5)
     #write image
     for count,image in enumerate(imgList, start = 1):
-        filename = 'testset2_'+ str(count)+'.jpeg'
+        filename = './data/testset2_'+ str(count)+'.jpeg'
         cv.imwrite(filename, image)
     return imgList
 
@@ -305,7 +306,7 @@ def detect_sift(img):
 # plt.imshow(res)
 # plt.show()
 
-# img = cv.imread('cat.jpeg')
+# img = cv.imread('./data/book.jpg')
 # testSet = Generate_Naive_Testset_Cropping(img)
 # simMatrix = CalcSimilarityHist(testSet)
 # print(simMatrix)
@@ -315,10 +316,10 @@ def detect_sift(img):
 # simMatrix = CalcSimilarityHist(rotation_test_set)
 # print(simMatrix)
 
-# img = cv.imread('street.jpeg', cv.IMREAD_UNCHANGED)
-# scaling_test_set = Generate_Naive_Testset_Scaling(img)
-# simMatrix = CalcSimilarityHist(scaling_test_set)
-# print(simMatrix)
+img = cv.imread('./data/flower.jpg', cv.IMREAD_UNCHANGED)
+scaling_test_set = Generate_Naive_Testset_Scaling(img)
+simMatrix = CalcSimilarityHist(scaling_test_set)
+print(simMatrix)
 
 # img = cv.imread('pawel.jpeg')
 # testSet = Generate_Naive_Testset_Scaling(img)
@@ -334,10 +335,9 @@ def detect_sift(img):
 # filename = 'pawel.jpeg'
 # cv.imwrite(filename,img)
 
-img = cv.imread('./data/city.jpg')
-testSet = Generate_Testset_One(img)
-simMatrix = CalcSimilarityHist(testSet)
-print(simMatrix)
+# img = cv.imread('./data/mountain.jpeg')
+# testSet = Generate_Testset_Two(img)
+# simMatrix = CalcSimilarityHist(testSet)
+# print(simMatrix)
 
-img = cv.imread('./data/city.jpg')
-cv.imwrite('./data/city.jpeg',img)
+
