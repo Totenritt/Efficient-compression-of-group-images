@@ -334,7 +334,10 @@ def detect_sift(img):
 # filename = 'pawel.jpeg'
 # cv.imwrite(filename,img)
 
-img = cv.imread('pawel.jpeg')
+img = cv.imread('./data/city.jpg')
 testSet = Generate_Testset_One(img)
 simMatrix = CalcSimilarityHist(testSet)
 print(simMatrix)
+
+img = cv.imread('./data/city.jpg')
+cv.imwrite('./data/city.jpeg',img)
