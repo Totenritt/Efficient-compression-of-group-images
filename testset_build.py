@@ -316,10 +316,10 @@ def detect_sift(img):
 # simMatrix = CalcSimilarityHist(rotation_test_set)
 # print(simMatrix)
 
-img = cv.imread('./data/flower.jpg', cv.IMREAD_UNCHANGED)
-scaling_test_set = Generate_Naive_Testset_Scaling(img)
-simMatrix = CalcSimilarityHist(scaling_test_set)
-print(simMatrix)
+# img = cv.imread('./data/flower.jpg', cv.IMREAD_UNCHANGED)
+# scaling_test_set = Generate_Naive_Testset_Scaling(img)
+# simMatrix = CalcSimilarityHist(scaling_test_set)
+# print(simMatrix)
 
 # img = cv.imread('pawel.jpeg')
 # testSet = Generate_Naive_Testset_Scaling(img)
@@ -339,5 +339,3 @@ print(simMatrix)
 # testSet = Generate_Testset_Two(img)
 # simMatrix = CalcSimilarityHist(testSet)
 # print(simMatrix)
-
-
