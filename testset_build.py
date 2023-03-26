@@ -272,7 +272,87 @@ def detect_sift(img):
     kp = sift.detect(grey, None) # keypoint location
     kp, des = sift.compute(grey, kp) # des is the eigenvector 
     #print(des.shape) # eigenvector dimension is 128 
-    return kp, des, grey, kp
+    return kp, des, grey
+
+def BFORCE_match_sift(img1, img2): # brute force matching, NO RANSAC
+    kp1, des1, grey1 = detect_sift(img1)
+    kp2, des2, grey2 = detect_sift(img2)
+
+    bf = cv.BFMatcher(crossCheck=True)
+    matches = bf.match(des1, des2)
+    res = cv.drawMatches(img1, kp1, img2, kp2, matches, None)
+    return res
+
+def FLANN_match_sift(img1,img2,KPLimitNum): #if determined num of key points less than KPLimitNum, system exit. if NO Setting Limit, use 'KPLimitNum=None'
+    if KPLimitNum == None or (isinstance (KPLimitNum,int) and KPLimitNum >= 1):
+        pass
+    else:
+        print("in match_sift KPLimitNum should be None or a positive integer")
+        sys.exit()
+
+    kp1, des1, grey1 = detect_sift(img1)
+    kp2, des2, grey2 = detect_sift(img2)
+
+    FLANN_INDEX_KDTREE = 0
+    indexParams = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+    searchParams = dict(checks=10)
+    flann = cv.FlannBasedMatcher(indexParams, searchParams)
+    matches = flann.knnMatch(des1, des2, k=2)
+    matchesMask = [[0, 0] for i in range(len(matches))]
+    for i, (m, n) in enumerate(matches):
+        if m.distance < 0.3*n.distance and KPLimitNum == None:
+            matchesMask[i] = [1, 0]
+        elif m.distance < 0.3*n.distance and KPLimitNum > 0:
+            matchesMask[i] = [1, 0]
+            KPLimitNum = KPLimitNum - 1
+
+                
+    drawPrams = dict(matchColor=(0, 255, 0),
+                 singlePointColor=(255, 0, 0),
+                 matchesMask=matchesMask,
+                 flags=0)
+    res = cv.drawMatchesKnn(grey1, kp1, grey2, kp2, matches, None, **drawPrams)
+    return res
+
+def RANSAC_match_sift(img1, img2): # Matching with RANSAC
+    kp1, des1, grey1 = detect_sift(img1)
+    kp2, des2, grey2 = detect_sift(img2)
+    FLANN_INDEX_KDTREE = 0
+    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+    search_params = dict(checks = 50)
+    flann = cv.FlannBasedMatcher(index_params, search_params)
+    matches = flann.knnMatch(des1,des2,k=2)
+    # store all the good matches as per Lowe's ratio test.
+    good = []
+    for m,n in matches:
+        if m.distance < 0.7*n.distance:
+            good.append(m)
+
+    MIN_MATCH_COUNT = 10
+    if len(good)>MIN_MATCH_COUNT:
+        src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+        dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+
+        M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC,5.0)
+        matchesMask = mask.ravel().tolist()
+    
+        h,w,xxxx = img1.shape
+        del xxxx
+        pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+        dst = cv.perspectiveTransform(pts,M)
+        img2 = cv.polylines(img2,[np.int32(dst)],True,255,3, cv.LINE_AA)
+
+    else:
+        print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
+        matchesMask = None
+
+    draw_params = dict(matchColor = (0,255,0), # draw matches in green color
+                    singlePointColor = None,
+                    matchesMask = matchesMask, # draw only inliers
+                    flags = 2)
+
+    res = cv.drawMatches(img1,kp1,img2,kp2,good,None,**draw_params)
+    return res
 
 # img2 = cv.imread('rotated_img2.jpeg')
 # img1 = cv.imread('street.jpg')
