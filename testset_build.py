@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import imutils
+
 def Generate_Naive_Testset_Cropping(img):
     """
     generate a simple test (list) from input image, the test set contains 5 different images. 

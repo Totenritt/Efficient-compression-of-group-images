@@ -5,6 +5,39 @@
 # Library for INT_MAX
 import sys
 import numpy as np
+import glob
+import cv2 as cv
+
+def TwoImgSimilarity(img1,img2):
+    IMG1_SIZE = img1.shape[0:2] #assume BGR colored image
+    IMG2_SIZE = img2.shape[0:2] #assume BGR colored image
+    NEW_SIZE = tuple([max(size1, size2) for size1, size2 in zip(IMG1_SIZE,IMG2_SIZE)]) #new size is the maximum of 2 dimensions 
+    img1re = cv.resize(img1, NEW_SIZE, interpolation=cv.INTER_LANCZOS4)
+    img2re = cv.resize(img2, NEW_SIZE, interpolation=cv.INTER_LANCZOS4)
+    grey2 = cv.cvtColor(img2re, cv.COLOR_BGR2GRAY)
+    grey1 = cv.cvtColor(img1re, cv.COLOR_BGR2GRAY)
+    hist1 = cv.calcHist(grey1, [0], None, [256], [0.0, 255.0])
+    hist2 = cv.calcHist(grey2, [0], None, [256], [0.0, 255.0])
+    Similarity = cv.compareHist(hist1, hist2, cv.HISTCMP_BHATTACHARYYA)
+    return Similarity
+
+def CalcSimilarityHist(imgList):
+    length = len(imgList)
+    if len(imgList)==0:
+        print("in CalcSimilarityHist img is empty")
+        sys.exit()
+        return -1
+    elif len(imgList)== 1:
+        print("in CalcSimilarityHist img has only one image")
+        sys.exit()
+        return -1
+    Similarity = np.zeros((length,length),dtype=np.float32)
+    for i in range(0,length):
+        for j in range(0,length):
+            Similarity[i][j] = TwoImgSimilarity(imgList[i],imgList[j])
+            print(Similarity[i][j])
+    return Similarity
+
 class Graph():
 	def __init__(self, vertices):
 		self.V = vertices
@@ -60,12 +93,14 @@ class Graph():
 
 # Driver's code
 if __name__ == '__main__':
-	g = Graph(5)
-	g.graph = np.array([[0., 0.02713484, 0.01794069, 0.09402313, 0.15748233],
- [0.02713484, 0., 0.02065755, 0.09902701,0.18016563],
- [0.01794069, 0.02065755, 0., 0.10312883, 0.1882463],
- [0.09402313, 0.09902701, 0.10312883, 0., 0.1032144],
- [0.15748233, 0.18016563, 0.1882463, 0.1032144, 0.]])
-	g.primMST()
+    setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
+    if ord(setcode) < 49 or ord(setcode) >53:
+        raise ValueError
+    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1', '5':'testset2'}
+    imgList = [cv.imread(file) for file in glob.glob("./data/"+testset[setcode]+"*.jpeg")]
+    g = Graph(len(imgList))
+    g.graph = CalcSimilarityHist(imgList)
+    print(g.graph)
+    g.primMST()
 
 # Contributed by Divyanshu Mehta
