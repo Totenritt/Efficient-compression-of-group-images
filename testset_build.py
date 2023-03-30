@@ -314,19 +314,28 @@ def FLANN_match_sift(img1,img2,KPLimitNum): #if determined num of key points les
     res = cv.drawMatchesKnn(grey1, kp1, grey2, kp2, matches, None, **drawPrams)
     return res
 
-def RANSAC_match_sift(img1, img2): # Matching with RANSAC
+def RANSAC_match_sift(img1, img2):
     kp1, des1, grey1 = detect_sift(img1)
     kp2, des2, grey2 = detect_sift(img2)
+    '''
     FLANN_INDEX_KDTREE = 0
     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
     search_params = dict(checks = 50)
     flann = cv.FlannBasedMatcher(index_params, search_params)
     matches = flann.knnMatch(des1,des2,k=2)
+    '''    
+    bf = cv.BFMatcher(crossCheck=True)
+    matches = bf.match(des1, des2)
+    '''
     # store all the good matches as per Lowe's ratio test.
     good = []
     for m,n in matches:
         if m.distance < 0.7*n.distance:
             good.append(m)
+    '''
+    good = []
+    for m in matches:
+        good.append(m)
 
     MIN_MATCH_COUNT = 10
     if len(good)>MIN_MATCH_COUNT:
@@ -352,7 +361,8 @@ def RANSAC_match_sift(img1, img2): # Matching with RANSAC
                     flags = 2)
 
     res = cv.drawMatches(img1,kp1,img2,kp2,good,None,**draw_params)
-    return res
+    BFres = cv.drawMatches(img1, kp1, img2, kp2, matches, None)
+    return BFres, res, M
 
 # img2 = cv.imread('rotated_img2.jpeg')
 # img1 = cv.imread('street.jpg')
