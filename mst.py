@@ -7,6 +7,7 @@ import sys
 import numpy as np
 import glob
 import cv2 as cv
+import testset_build
 
 def TwoImgSimilarity(img1,img2):
     IMG1_SIZE = img1.shape[0:2] #assume BGR colored image
@@ -68,7 +69,7 @@ class Graph():
 		# Make key 0 so that this vertex is picked as first vertex
 		key[0] = 0
 		mstSet = [False] * self.V
-		parent[0] = -1 # First node is always the root of
+		parent[0] = -1 # First node is always the root
 		for cout in range(self.V):
 			# Pick the minimum distance vertex from
 			# the set of vertices not yet processed.
@@ -90,6 +91,8 @@ class Graph():
 					key[v] = self.graph[u][v]
 					parent[v] = u
 		self.printMST(parent)
+		return parent
+
 
 # Driver's code
 if __name__ == '__main__':
@@ -101,6 +104,6 @@ if __name__ == '__main__':
     g = Graph(len(imgList))
     g.graph = CalcSimilarityHist(imgList)
     print(g.graph)
-    g.primMST()
+    parent = g.primMST()
 
 # Contributed by Divyanshu Mehta
