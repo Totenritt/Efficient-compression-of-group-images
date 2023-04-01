@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import imutils
+import mst 
+import glob
 
 def Generate_Naive_Testset_Cropping(img):
     """
@@ -278,7 +280,6 @@ def detect_sift(img):
 def BFORCE_match_sift(img1, img2): # brute force matching, NO RANSAC
     kp1, des1, grey1 = detect_sift(img1)
     kp2, des2, grey2 = detect_sift(img2)
-
     bf = cv.BFMatcher(crossCheck=True)
     matches = bf.match(des1, des2)
     res = cv.drawMatches(img1, kp1, img2, kp2, matches, None)
@@ -290,10 +291,8 @@ def FLANN_match_sift(img1,img2,KPLimitNum): #if determined num of key points les
     else:
         print("in match_sift KPLimitNum should be None or a positive integer")
         sys.exit()
-
     kp1, des1, grey1 = detect_sift(img1)
     kp2, des2, grey2 = detect_sift(img2)
-
     FLANN_INDEX_KDTREE = 0
     indexParams = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
     searchParams = dict(checks=10)
@@ -306,8 +305,6 @@ def FLANN_match_sift(img1,img2,KPLimitNum): #if determined num of key points les
         elif m.distance < 0.3*n.distance and KPLimitNum > 0:
             matchesMask[i] = [1, 0]
             KPLimitNum = KPLimitNum - 1
-
-                
     drawPrams = dict(matchColor=(0, 255, 0),
                  singlePointColor=(255, 0, 0),
                  matchesMask=matchesMask,
@@ -337,33 +334,98 @@ def RANSAC_match_sift(img1, img2):
     good = []
     for m in matches:
         good.append(m)
-
     MIN_MATCH_COUNT = 10
     if len(good)>MIN_MATCH_COUNT:
         src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
         dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
-
         M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC,5.0)
         matchesMask = mask.ravel().tolist()
-    
         h,w,xxxx = img1.shape
         del xxxx
         pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
         dst = cv.perspectiveTransform(pts,M)
         img2 = cv.polylines(img2,[np.int32(dst)],True,255,3, cv.LINE_AA)
-
     else:
         print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
         matchesMask = None
-
     draw_params = dict(matchColor = (0,255,0), # draw matches in green color
                     singlePointColor = None,
                     matchesMask = matchesMask, # draw only inliers
                     flags = 2)
-
     res = cv.drawMatches(img1,kp1,img2,kp2,good,None,**draw_params)
     BFres = cv.drawMatches(img1, kp1, img2, kp2, matches, None)
     return BFres, res, M
+
+def generate_histogram(img, do_print, filename):
+    """
+    @params: img: can be a grayscale or color image. We calculate the Normalized histogram of this image.
+    @params: do_print: if or not print the result histogram
+    @return: will return both histogram and the grayscale image 
+    """
+    if len(img.shape) == 3: # img is colorful, so we convert it to grayscale
+        gr_img = np.mean(img, axis=-1)
+    else:
+        gr_img = img
+    '''now we calc grayscale histogram'''
+    gr_hist = np.zeros([511])
+    for x_pixel in range(gr_img.shape[0]):
+        for y_pixel in range(gr_img.shape[1]):
+            pixel_value = int(gr_img[x_pixel, y_pixel])
+            gr_hist[pixel_value + 255] += 1
+    '''normalizing the Histogram'''
+    gr_hist /= (gr_img.shape[0] * gr_img.shape[1])
+    if do_print:
+        print_histogram(gr_hist, filename, title="Normalized Histogram")
+    return gr_hist, gr_img
+
+def print_histogram(_histrogram, filename, title):
+    plt.figure()
+    plt.title(title)
+    X = np.linspace(-255, 255, 511, endpoint=True)
+    plt.plot(X, _histrogram, color='#ef476f')
+    plt.ylabel('Percentage of Pixels')
+    plt.xlabel('Pixel Value')
+    plt.savefig("./data/hist_" + filename +'.jpeg')
+
+def plotDiff(parent, filename):
+    '''
+    plot the difference histogram between original image and predicted image
+    for all image within testse    '''
+    for i in range(1, len(parent)):
+        parentImg = cv.imread('./data/'+ filename + str(parent[i]+1)+'.jpeg')
+        childImg = cv.imread('./data/'+ filename + str(i+1) +'.jpeg')
+        img2Reg = generatePredictImg(parentImg, childImg, filename = filename + str(i + 1))
+    return None
+
+def generatePredictImg(parentImg, childImg, filename):
+    '''
+    generate predictive image of img2 with respect to img1
+    '''
+    BFres, res, Homography = RANSAC_match_sift(parentImg, childImg)
+    childWidth,childHeight,childChannel = childImg.shape
+    childReg = cv.warpPerspective(parentImg, Homography, (childHeight, childWidth))
+    cv.imwrite('./data/'+filename+'_predicted.jpeg', childReg)
+    childImg = childImg.astype(int)
+    childReg = childReg.astype(int)
+    diffMatrix = np.subtract(childImg,childReg)
+    gr_hist1, gr_img1 = generate_histogram(diffMatrix, 1, filename)
+    return childReg
+
+if __name__ == '__main__':
+    #generate MST
+    setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
+    if ord(setcode) < 49 or ord(setcode) >53:
+        raise ValueError
+    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_'}
+    name = testset[setcode]
+    imgList = [cv.imread(file) for file in glob.glob("./data/"+ name +"?.jpeg")]
+    g = mst.Graph(len(imgList))
+    g.graph = CalcSimilarityHist(imgList)
+    print(g.graph)
+    parent = g.primMST()
+    plotDiff(parent, name)
+
+    
 
 # img2 = cv.imread('rotated_img2.jpeg')
 # img1 = cv.imread('street.jpg')
