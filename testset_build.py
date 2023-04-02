@@ -66,7 +66,7 @@ def Generate_Naive_Testset_Rotation(img):
     return imgList
 
 def Generate_Naive_Testset_Scaling(img):
-    SET_SIZE = 5 
+    SET_SIZE = 3 
     if SET_SIZE % 2 != 1:
         raise ValueError('set size must be odd number')
     SCALING_FACTOR = 2 
@@ -78,8 +78,8 @@ def Generate_Naive_Testset_Scaling(img):
     num_downsampling = (SET_SIZE-1)//2
     num_upsampling = num_downsampling
     for i in range(num_upsampling):
-        new_width *= SCALING_FACTOR 
-        new_length *= SCALING_FACTOR
+        new_width = SCALING_FACTOR * new_width 
+        new_length = SCALING_FACTOR * new_length
         new_size = (new_length, new_width)
         zoomed_img = cv.resize(img, new_size, interpolation=cv.INTER_LANCZOS4)
         imgList.append(zoomed_img)
@@ -412,6 +412,10 @@ def generatePredictImg(parentImg, childImg, filename):
     return childReg
 
 if __name__ == '__main__':
+    # img = cv.imread('./data/flower.jpg', cv.IMREAD_UNCHANGED)
+    # scaling_test_set = Generate_Naive_Testset_Scaling(img)
+    # simMatrix = CalcSimilarityHist(scaling_test_set)
+    # print(simMatrix)
     #generate MST
     setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
     if ord(setcode) < 49 or ord(setcode) >53:
@@ -467,11 +471,6 @@ if __name__ == '__main__':
 # img = cv.imread('street.jpeg', cv.IMREAD_UNCHANGED)
 # rotation_test_set = Generate_Naive_Testset_Rotation(img)
 # simMatrix = CalcSimilarityHist(rotation_test_set)
-# print(simMatrix)
-
-# img = cv.imread('./data/flower.jpg', cv.IMREAD_UNCHANGED)
-# scaling_test_set = Generate_Naive_Testset_Scaling(img)
-# simMatrix = CalcSimilarityHist(scaling_test_set)
 # print(simMatrix)
 
 # img = cv.imread('pawel.jpeg')
