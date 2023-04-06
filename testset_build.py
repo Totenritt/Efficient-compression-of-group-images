@@ -5,6 +5,7 @@ import sys
 import imutils
 import mst 
 import glob
+from scipy.stats import entropy
 
 def Generate_Naive_Testset_Cropping(img):
     """
@@ -378,11 +379,12 @@ def generate_histogram(img, do_print, filename):
         print_histogram(gr_hist, filename, title="Normalized Histogram")
     return gr_hist, gr_img
 
-def print_histogram(_histrogram, filename, title):
+def print_histogram(_histogram, filename, title):
     plt.figure()
-    plt.title(title)
+    entro = entropy(_histogram)
+    plt.title(title+' entropy:'+str(entro)[:4])
     X = np.linspace(-255, 255, 511, endpoint=True)
-    plt.plot(X, _histrogram, color='#ef476f')
+    plt.plot(X, _histogram, color='#ef476f')
     plt.ylabel('Percentage of Pixels')
     plt.xlabel('Pixel Value')
     plt.savefig("./data/hist_" + filename +'.jpeg')
@@ -410,7 +412,7 @@ def generatePredictImg(parentImg, childImg, filename):
     diffMatrix = np.subtract(childImg,childReg)
     gr_hist1, gr_img1 = generate_histogram(diffMatrix, 1, filename)
     return childReg
-
+    
 if __name__ == '__main__':
     # img = cv.imread('./data/flower.jpg', cv.IMREAD_UNCHANGED)
     # scaling_test_set = Generate_Naive_Testset_Scaling(img)
@@ -428,7 +430,7 @@ if __name__ == '__main__':
     print(g.graph)
     parent = g.primMST()
     plotDiff(parent, name)
-
+    
     
 
 # img2 = cv.imread('rotated_img2.jpeg')
