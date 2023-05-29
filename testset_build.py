@@ -37,7 +37,7 @@ def get_center(img):
     return centerX, centerY
 
 def Generate_Naive_Testset_Rotation(img):
-    """generate a simple test (list) from input image, the test set contains 5 different images. 
+    """generate a simple test (list) from input image , the test set contains 5 different images. 
     img1 is the assumed mother image"""
     IMG_WIDTH = img.shape[0]
     IMG_LENGTH = img.shape[1]
@@ -117,15 +117,15 @@ def Generate_Naive_Testset_Translation(img):
         imgList.append(cropped)
     for count,image in enumerate(imgList):
         if count ==0:
-            filename = 'transformed_img_original' + '.jpeg'
+            filename = './data/transformed_img_original' + '.jpeg'
         elif count == 1:
-            filename = 'transformed_img_down'+'.jpeg'
+            filename = './data/transformed_img_down'+'.jpeg'
         elif count ==2:
-            filename = 'transformed_img_up'+'.jpeg'
+            filename = './data/transformed_img_up'+'.jpeg'
         elif count ==3:
-            filename = 'transformed_img_right'+'.jpeg'
+            filename = './data/transformed_img_right'+'.jpeg'
         elif count ==4:
-            filename = 'transformed_img_left'+'.jpeg'
+            filename = './data/transformed_img_left'+'.jpeg'
         cv.imwrite(filename, image)
     return imgList
 
@@ -359,8 +359,8 @@ def RANSAC_match_sift(img1, img2):
 
 def generate_histogram(img, do_print, filename):
     """
-    @params: img: can be a grayscale or color image. We calculate the Normalized histogram of this image.
-    @params: do_print: if or not print the result histogram
+    img: can be a grayscale or color image. We calculate the Normalized histogram of this image.
+    do_print: if or not print the result histogram
     @return: will return both histogram and the grayscale image 
     """
     if len(img.shape) == 3: # img is colorful, so we convert it to grayscale
@@ -382,7 +382,7 @@ def generate_histogram(img, do_print, filename):
 def print_histogram(_histogram, filename, title):
     plt.figure()
     entro = entropy(_histogram)
-    plt.title(title+' entropy:'+str(entro)[:4])
+    plt.title(title+' with entropy:'+str(entro)[:4])
     X = np.linspace(-255, 255, 511, endpoint=True)
     plt.plot(X, _histogram, color='#ef476f')
     plt.ylabel('Percentage of Pixels')
@@ -392,16 +392,17 @@ def print_histogram(_histogram, filename, title):
 def plotDiff(parent, filename):
     '''
     plot the difference histogram between original image and predicted image
-    for all image within testse    '''
+    for all image within testset   '''
     for i in range(1, len(parent)):
         parentImg = cv.imread('./data/'+ filename + str(parent[i]+1)+'.jpeg')
         childImg = cv.imread('./data/'+ filename + str(i+1) +'.jpeg')
-        img2Reg = generatePredictImg(parentImg, childImg, filename = filename + str(i + 1))
+        img2Reg = generatePredictImg(parentImg, childImg, True, filename = filename + str(i + 1))
     return None
 
-def generatePredictImg(parentImg, childImg, filename):
+def generatePredictImg(parentImg, childImg, toPrint, filename):
     '''
-    generate predictive image of img2 with respect to img1
+    generate predictive image of child image with respect to parent image
+    if toPrint is false don't print the histogram
     '''
     BFres, res, Homography = RANSAC_match_sift(parentImg, childImg)
     childWidth,childHeight,childChannel = childImg.shape
@@ -410,29 +411,41 @@ def generatePredictImg(parentImg, childImg, filename):
     childImg = childImg.astype(int)
     childReg = childReg.astype(int)
     diffMatrix = np.subtract(childImg,childReg)
-    gr_hist1, gr_img1 = generate_histogram(diffMatrix, 1, filename)
+    if toPrint:
+        gr_hist1, gr_img1 = generate_histogram(diffMatrix, True, filename)
     return childReg
-    
+
+def codeResidual(img):
+    '''
+    add 255 to residual images save to ppm format  
+    '''
+    #convert the 8bit image to 16bit unsigned, and add an 255 offset
+    img = img.astype(np.uint16) + 255 
+    #normalize the image to fit in 16bit ppm format
+    offsetImg = cv.normalize(img, None, 0, 2**16-1, cv.NORM_MINMAX, dtype=cv.CV_16U)
+    #write the image 
+    cv.imwrite('./data/residual/residual.ppm', offsetImg)
+    return offsetImg
+
+
 if __name__ == '__main__':
     # img = cv.imread('./data/flower.jpg', cv.IMREAD_UNCHANGED)
     # scaling_test_set = Generate_Naive_Testset_Scaling(img)
     # simMatrix = CalcSimilarityHist(scaling_test_set)
     # print(simMatrix)
     #generate MST
-    setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
-    if ord(setcode) < 49 or ord(setcode) >53:
-        raise ValueError
-    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_'}
-    name = testset[setcode]
-    imgList = [cv.imread(file) for file in glob.glob("./data/"+ name +"?.jpeg")]
-    g = mst.Graph(len(imgList))
-    g.graph = CalcSimilarityHist(imgList)
-    print(g.graph)
-    parent = g.primMST()
-    plotDiff(parent, name)
+    # setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
+    # if ord(setcode) < 49 or ord(setcode) >53:
+    #     raise ValueError
+    # testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_'}
+    # name = testset[setcode]
+    # imgList = [cv.imread(file) for file in glob.glob("./data/"+ name +"?.jpeg")]
+    # g = mst.Graph(len(imgList))
+    # g.graph = CalcSimilarityHist(imgList)
+    # print(g.graph)
+    # parent = g.primMST()
+    # codeResidual(parent, name)
     
-    
-
 # img2 = cv.imread('rotated_img2.jpeg')
 # img1 = cv.imread('street.jpg')
 # kp1, des1, grey1, kp1 = detect_sift(img1)
@@ -480,16 +493,20 @@ if __name__ == '__main__':
 # simMatrix = CalcSimilarityHist(testSet)
 # print(simMatrix)
 
-# img = cv.imread('pawel.jpeg')
+# img = cv.imread('./data/pawel.jpeg')
 # testSet = Generate_Naive_Testset_Translation(img)
 # simMatrix = CalcSimilarityHist(testSet)
 # print(simMatrix)
-
-# img = cv.imread('pawel.jpg', cv.IMREAD_UNCHANGED)
-# filename = 'pawel.jpeg'
-# cv.imwrite(filename,img)
 
 # img = cv.imread('./data/mountain.jpeg')
 # testSet = Generate_Testset_Two(img)
 # simMatrix = CalcSimilarityHist(testSet)
 # print(simMatrix)
+
+    img = cv.imread('./data/rotated_img1.jpeg')
+    img = img.astype(np.uint16) + 255 
+    # offsetImg = cv.normalize(img, None, 0, 2**16-1, cv.NORM_MINMAX, dtype=cv.CV_16U)
+    cv.imwrite('./data/residual/residual.ppm', img)
+    img = img - 255
+    img = img.astype(np.uint8)
+    cv.imwrite('./data/residual/residual.ppm', img)

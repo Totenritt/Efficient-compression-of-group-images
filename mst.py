@@ -93,7 +93,6 @@ class Graph():
 		self.printMST(parent)
 		return parent
 
-
 # Driver's code
 if __name__ == '__main__':
     setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
