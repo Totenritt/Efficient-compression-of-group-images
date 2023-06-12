@@ -14,8 +14,8 @@ create the ppm with a offset255, named it offsetImg.ppm
 '''
 img1int = img1.astype(int)
 img2int = img2.astype(int)
-diffimg = np.subtract(img1int,img2int)
-diffimg255 = diffimg.astype(np.uint16) + 255
+diffimg = np.subtract(img1int,img2int)+ 255
+diffimg255 = diffimg.astype(np.uint16)
 cv.imwrite('./data/offsetImg.ppm', diffimg255)
 
 '''
@@ -31,9 +31,15 @@ So u get a decoded ppm image
 '''
 img3 is the decodedImg_20 of layers 20, which is 0 in 'slope 44670,...,0'
 '''
-img3 = cv.imread('./data/decodedImg_20.ppm',-1)
-img3_255 = img3.astype(np.uint8)-255
-decoded_targetImg = img2 + img3_255
+img3 = cv.imread( './jpeg2000test/decodedImg.ppm' ,-1)
+img3_255 = img3.astype(int) - 255
+img2 = img2.astype(int)
+img5 = img2 + img3_255
+threshold = 255
+img5[img5>threshold] =255
+img5[img5<0] = 0
+img5 = img5.astype(np.uint8)
+cv.imwrite('./jpeg2000test/finalImg.ppm' , img5)
 cv.imwrite('./data/decoded_targetImg.jpeg', decoded_targetImg)
 
 
