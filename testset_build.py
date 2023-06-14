@@ -420,12 +420,13 @@ def codeResidual(img):
     add 255 to residual images save to ppm format  
     '''
     #convert the 8bit image to 16bit unsigned, and add an 255 offset
-    img = img.astype(np.uint16) + 255 
-    #normalize the image to fit in 16bit ppm format
-    offsetImg = cv.normalize(img, None, 0, 2**16-1, cv.NORM_MINMAX, dtype=cv.CV_16U)
+    img = img + 255
+    img = img.astype(np.uint16) 
+    # normalize the image to fit in 16bit ppm format
+    # offsetImg = cv.normalize(img, None, 0, 2**16-1, cv.NORM_MINMAX, dtype=cv.CV_16U)
     #write the image 
-    cv.imwrite('./data/residual.ppm', offsetImg)
-    return offsetImg
+    cv.imwrite('./data/residual.ppm', img)
+    return img
 
 
 if __name__ == '__main__':
