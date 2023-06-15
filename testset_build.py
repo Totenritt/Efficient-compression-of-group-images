@@ -425,7 +425,7 @@ def codeResidual(img):
     # normalize the image to fit in 16bit ppm format
     # offsetImg = cv.normalize(img, None, 0, 2**16-1, cv.NORM_MINMAX, dtype=cv.CV_16U)
     #write the image 
-    cv.imwrite('./data/residual.ppm', img)
+    cv.imwrite('./data/residual/offsetImg.ppm', img)
     return img
 
 
