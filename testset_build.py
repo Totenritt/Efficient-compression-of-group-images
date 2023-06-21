@@ -173,7 +173,7 @@ def Generate_Testset_One(img):
     imgList.append(zoomed_img)
     #write image
     for count,image in enumerate(imgList, start = 1):
-        filename = './data/testset1_'+ str(count)+'.jpeg'
+        filename = './data/testset1_img'+ str(count)+'.jpeg'
         cv.imwrite( filename, image)
     return imgList
 
@@ -236,7 +236,7 @@ def Generate_Testset_Two(img):
     imgList.append(img5)
     #write image
     for count,image in enumerate(imgList, start = 1):
-        filename = './data/testset2_'+ str(count)+'.jpeg'
+        filename = './data/testset2_img'+ str(count)+'.jpeg'
         cv.imwrite(filename, image)
     return imgList
 
@@ -499,15 +499,20 @@ if __name__ == '__main__':
 # simMatrix = CalcSimilarityHist(testSet)
 # print(simMatrix)
 
-# img = cv.imread('./data/mountain.jpeg')
-# testSet = Generate_Testset_Two(img)
-# simMatrix = CalcSimilarityHist(testSet)
-# print(simMatrix)
+    # img = cv.imread('./data/mountain.jpeg')
+    # testSet = Generate_Testset_Two(img)
+    # simMatrix = CalcSimilarityHist(testSet)
+    # print(simMatrix)
 
-    img = cv.imread('./data/rotated_img1.jpeg')
-    img = img.astype(np.uint16) + 255 
-    # offsetImg = cv.normalize(img, None, 0, 2**16-1, cv.NORM_MINMAX, dtype=cv.CV_16U)
-    cv.imwrite('./data/residual/residual.ppm', img)
-    img = img - 255
-    img = img.astype(np.uint8)
-    cv.imwrite('./data/residual/residual.ppm', img)
+    img = cv.imread('./data/city.jpeg')
+    testSet = Generate_Testset_One(img)
+    simMatrix = CalcSimilarityHist(testSet)
+    print(simMatrix)
+
+    # img = cv.imread('./data/rotated_img1.jpeg')
+    # img = img.astype(np.uint16) + 255 
+    # # offsetImg = cv.normalize(img, None, 0, 2**16-1, cv.NORM_MINMAX, dtype=cv.CV_16U)
+    # cv.imwrite('./data/residual/residual.ppm', img)
+    # img = img - 255
+    # img = img.astype(np.uint8)
+    # cv.imwrite('./data/residual/residual.ppm', img)
