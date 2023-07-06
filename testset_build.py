@@ -52,7 +52,7 @@ def Generate_Naive_Testset_Rotation(img):
     mother = img[window_start_Y:window_end_Y,window_start_X:window_end_X]
     cv.imwrite('rotated_img1.jpeg',mother)
     imgList = [mother]
-    rotation_angle = 360/SET_SIZE #increment of rotation_angle
+    rotation_angle = 20/SET_SIZE #increment of rotation_angle
     for i in range(SET_SIZE -1):
         rotated_img =  imutils.rotate_bound(img, rotation_angle*(i+1)) #for rotation around center and avoid out of boundary cropping 
         rotated_center = get_center(rotated_img)
@@ -62,7 +62,7 @@ def Generate_Naive_Testset_Rotation(img):
         window_end_Y = int(np.rint(rotated_center[1] + WINDOW_SIZE //2))
         sample_img = rotated_img[window_start_Y:window_end_Y, window_start_X: window_end_X]
         imgList.append(sample_img)
-        filename = 'rotated_img' + str(i+2) + '.jpeg'
+        filename = './data/rotated_img' + str(i+2) + '.jpeg'
         cv.imwrite(filename, sample_img)
     return imgList
 
@@ -484,10 +484,10 @@ if __name__ == '__main__':
 # simMatrix = CalcSimilarityHist(testSet)
 # print(simMatrix)
 
-# img = cv.imread('street.jpeg', cv.IMREAD_UNCHANGED)
-# rotation_test_set = Generate_Naive_Testset_Rotation(img)
-# simMatrix = CalcSimilarityHist(rotation_test_set)
-# print(simMatrix)
+    img = cv.imread('./data/street.jpeg', cv.IMREAD_UNCHANGED)
+    rotation_test_set = Generate_Naive_Testset_Rotation(img)
+    simMatrix = CalcSimilarityHist(rotation_test_set)
+    print(simMatrix)
 
 # img = cv.imread('pawel.jpeg')
 # testSet = Generate_Naive_Testset_Scaling(img)
@@ -504,10 +504,10 @@ if __name__ == '__main__':
     # simMatrix = CalcSimilarityHist(testSet)
     # print(simMatrix)
 
-    img = cv.imread('./data/city.jpeg')
-    testSet = Generate_Testset_One(img)
-    simMatrix = CalcSimilarityHist(testSet)
-    print(simMatrix)
+    # img = cv.imread('./data/city.jpeg')
+    # testSet = Generate_Testset_One(img)
+    # simMatrix = CalcSimilarityHist(testSet)
+    # print(simMatrix)
 
     # img = cv.imread('./data/rotated_img1.jpeg')
     # img = img.astype(np.uint16) + 255 

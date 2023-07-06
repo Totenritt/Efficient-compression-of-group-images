@@ -9,6 +9,17 @@ import string
 import re
 import subprocess
 import mst
+def downsampling():
+    '''
+    down sample the phone.jpeg'''
+    phone1 = cv.imread('./data/phone1.jpeg')
+    phone2 = cv.imread('./data/phone2.jpeg')
+    newSize = phone1.shape[1]//2,phone1.shape[0]//2
+    zoomed_phone1 = cv.resize(phone1, newSize, interpolation=cv.INTER_LANCZOS4)
+    zoomed_phone2 = cv.resize(phone2, newSize, interpolation=cv.INTER_LANCZOS4)
+    cv.imwrite('./data/phone1_resize.jpeg',zoomed_phone1)
+    cv.imwrite('./data/phone2_resize.jpeg',zoomed_phone2)
+    return None
 
 def findLayerThresholds(inputByte):
     '''
@@ -79,9 +90,9 @@ def decoder(threshold, childName):
 
 def main():
     setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
-    if ord(setcode) < 49 or ord(setcode) >53:
+    if ord(setcode) < 49 or ord(setcode) >54:
         raise ValueError
-    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_'}
+    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_', '6':'phone'}
     setName = testset[setcode]
     imgList = [cv.imread(file) for file in glob.glob("./data/"+ setName +'[0-9]'+".jpeg")]
     g = mst.Graph(len(imgList))
