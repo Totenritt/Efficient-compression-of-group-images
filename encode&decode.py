@@ -9,6 +9,7 @@ import string
 import re
 import subprocess
 import mst
+import pyinputplus
 def downsampling():
     '''
     down sample the phone.jpeg'''
