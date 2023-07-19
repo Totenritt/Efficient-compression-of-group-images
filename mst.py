@@ -9,6 +9,48 @@ import glob
 import cv2 as cv
 import testset_build
 
+def getMatchNum(matches,ratio):
+
+    matchesMask=[[0,0] for i in range(len(matches))]
+    matchNum=0
+    for i,(m,n) in enumerate(matches):
+        if m.distance<ratio*n.distance:
+            matchesMask[i]=[1,0]
+            matchNum+=1
+    return (matchNum,matchesMask)
+
+def CalcSimilaritySIFT(imgList):
+	sift = cv.SIFT_create()
+	FLANN_INDEX_KDTREE=0
+	indexParams=dict(algorithm=FLANN_INDEX_KDTREE,trees=5)
+	searchParams=dict(checks=50)
+	flann=cv.FlannBasedMatcher(indexParams,searchParams)
+
+	length = len(imgList[0])
+	Similarity = np.zeros((length,length),dtype=np.float32)
+
+	for i in range(0,length):
+		sampleImage = cv.imread(imgList[0][i],0)
+		kp1, des1 = sift.detectAndCompute(sampleImage, None)
+		for j in range(0,length):
+			queryImage = cv.imread(imgList[0][j],0)
+			kp2, des2 = sift.detectAndCompute(queryImage, None)
+			matches=flann.knnMatch(des1,des2,k=2)
+			(matchNum,matchesMask)=getMatchNum(matches,0.9)
+			matchRatio=matchNum/len(matches)
+			Similarity[i][j] = matchRatio
+			print(Similarity[i][j])
+	for i in range(0,length):
+		for j in range(0,length):
+			if i == j:
+				pass
+			else:
+				Similarity[i][j] = max([Similarity[i][j],Similarity[j][i]])
+	for i in range(0,length):
+		for j in range(0,length):
+			Similarity[i][j] = 1 - Similarity[i][j]
+	return Similarity
+
 def TwoImgSimilarity(img1,img2):
     IMG1_SIZE = img1.shape[0:2] #assume BGR colored image
     IMG2_SIZE = img2.shape[0:2] #assume BGR colored image
@@ -96,14 +138,23 @@ class Graph():
 
 # Driver's code
 if __name__ == '__main__':
-    setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
-    if ord(setcode) < 49 or ord(setcode) >53:
-        raise ValueError
-    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_img', '5':'testset2_img'}
-    imgList = [cv.imread(file) for file in glob.glob("./data/"+testset[setcode]+'[0-9]'+".jpeg")]
-    g = Graph(len(imgList))
-    g.graph = CalcSimilarityHist(imgList)
-    print(g.graph)
-    parent = g.primMST()
+	methodcode = input('Please input the MST method code \n 1 for SIFT\n 2 for Histgram\n')
+	if ord(methodcode) < 49 or ord(methodcode) >50:
+		raise ValueError
+	setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
+	if ord(setcode) < 49 or ord(setcode) >53:
+		raise ValueError
+	testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_img', '5':'testset2_img'}
+	
+	if methodcode == '1': 
+		imgList = [glob.glob("./data/"+testset[setcode]+"*.jpeg")]
+		g = Graph(len(imgList[0]))
+		g.graph = CalcSimilaritySIFT(imgList)
+	elif methodcode == '2':
+		imgList = [cv.imread(file) for file in glob.glob("./data/"+testset[setcode]+'[0-9]'+".jpeg")]
+		g = Graph(len(imgList))
+		g.graph = CalcSimilarityHist(imgList)
+	print(g.graph)
+	parent = g.primMST()
 
 # Contributed by Divyanshu Mehta

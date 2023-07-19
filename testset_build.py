@@ -413,7 +413,7 @@ def generatePredictImg(parentImg, childImg, toPrint, filename):
     diffMatrix = np.subtract(childImg,childReg)
     if toPrint:
         gr_hist1, gr_img1 = generate_histogram(diffMatrix, True, filename)
-    return childReg
+    return childReg, Homography
 
 def codeResidual(img):
     '''
