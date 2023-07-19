@@ -60,6 +60,7 @@ class Graph():
 				min = key[v]
 				min_index = v
 		return min_index
+
 	def primMST(self):
 	# Function to construct and print MST for a graph
 	# represented using adjacency matrix representation
