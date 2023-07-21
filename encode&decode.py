@@ -47,12 +47,14 @@ def encoder(parentName, childName):
     encode the predictive image of child image with respect to the parent image
     '''
     #read the image
+    parentImg = cv.imread('./data/' +parentName +'.jpeg')
     childImg = cv.imread('./data/' +childName +'.jpeg')
+    childWidth,childHeight,childChannel = childImg.shape
     #imread predicted image
     predictImg = cv.imread('./data/'+childName+'_predicted.jpeg')
-    #imwrite predicted image.ppm and cpmpress it
-    cv.imwrite('./data/'+childName+'.ppm',predictImg)
-    compressCmd = "kdu_compress -i ./data/"+childName+".ppm -o ./data/"+childName+".jp2"
+    #imwrite parent image.ppm and cpmpress it
+    cv.imwrite('./data/'+parentName+'.ppm',parentImg)
+    compressCmd = "kdu_compress -i ./data/"+parentName+".ppm -o ./data/"+parentName+".jp2"
     subprocess.run(compressCmd, shell=True)
     #generate residual image
     childImg = childImg.astype(int) #cast to int type to avoid negative values clipping 
@@ -66,14 +68,14 @@ def encoder(parentName, childName):
     thresholdCmd = "kdu_compress -i ./data/residual/offsetImg.ppm -o ./data/residual/offsetImg_output.jp2 Clayers=20"
     output = subprocess.check_output(thresholdCmd, shell=True)
     threshold = findLayerThresholds(output)
-    return threshold
+    return threshold,childWidth,childHeight
 
-def decoder(threshold, childName, Homography):
+def decoder(threshold,parentName, childName, Homography, Height, Width):
     # kakadu command for decode
-    decodedCmd = "kdu_expand -i ./data/"+childName+".jp2 -o ./data/"+childName+"_decoded"+".ppm"
+    decodedCmd = "kdu_expand -i ./data/"+parentName+".jp2 -o ./data/"+parentName+"_decoded"+".ppm"
     subprocess.run(decodedCmd, shell=True)
-    predictedImg = cv.imread("./data/"+childName+"_decoded"+".ppm")
-    Height,Weight,Channel = predictedImg.shape
+    parentImg = cv.imread("./data/"+parentName+"_decoded"+".ppm")
+    predictedImg = cv.warpPerspective(parentImg, Homography, (Height, Width), flags = cv.INTER_LANCZOS4)
     # kakadu command for compress file 
     compressCmd = "kdu_compress -i ./data/residual/offsetImg.ppm -o ./data/residual/offsetImg_output.jp2 -slope " + threshold
     subprocess.run(compressCmd, shell=True)
@@ -83,12 +85,13 @@ def decoder(threshold, childName, Homography):
         subprocess.run(expandCmd, shell=True)
         decodedImg = cv.imread('./data/residual/decodedImg_'+str(i)+'.ppm',-1) # -1 means read the image with original data format, in this case uint16
         decodedImg= decodedImg.astype(int) - 255
+        decodedImg = np.clip(decodedImg,0,510)
         predictedImg = predictedImg.astype(int)
         finalImg = decodedImg + predictedImg
         finalImg = np.clip(finalImg,0,255)
         finalImg = finalImg.astype(np.uint8)
         cv.imwrite('./data/residual/'+childName + 'finalImg'+str(i)+'.ppm', finalImg)
-    #make boundary blur
+    # make boundary blur
     boundaryFlag = input('Whether to make boundary blur on clearest image 1 for yes else for no \n')
     boundaryFlag = int(boundaryFlag)
     if boundaryFlag == 1:
@@ -127,10 +130,10 @@ def main():
     methodcode = input('Please input the MST method code \n 1 for SIFT\n 2 for Histgram\n')
     if ord(methodcode) < 49 or ord(methodcode) >50:
         raise ValueError
-    setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
+    setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n 6 for transformed_img\n')
     if ord(setcode) < 49 or ord(setcode) >54:
         raise ValueError
-    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_', '6':'phone'}
+    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_', '6':'transformed_img'}
     setName = testset[setcode]
     if methodcode == '1': 
         imgList = [glob.glob("./data/"+testset[setcode]+'[0-9]'+".jpeg")]
@@ -145,8 +148,12 @@ def main():
         parentName = setName + str(mstList[i]+1)
         childName = setName + str(i+1)
         Homography = predict(parentName, childName)
-        threshold = encoder(parentName, childName)
-        decoder(threshold, childName, Homography)
+        threshold,childWidth,childHeight = encoder(parentName, childName)
+        decoder(threshold,parentName, childName, Homography,childHeight, childWidth)
 
 if __name__ == '__main__':
     main()
+
+
+
+
