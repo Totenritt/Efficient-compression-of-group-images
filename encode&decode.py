@@ -127,10 +127,10 @@ def main():
     methodcode = input('Please input the MST method code \n 1 for SIFT\n 2 for Histgram\n')
     if ord(methodcode) < 49 or ord(methodcode) >50:
         raise ValueError
-    setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n')
-    if ord(setcode) < 49 or ord(setcode) >54:
+    setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n 7 for transformed \n')
+    if ord(setcode) < 49 or ord(setcode) >55:
         raise ValueError
-    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_', '6':'phone'}
+    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_', '6':'phone', '7':'transformed_img'}
     setName = testset[setcode]
     if methodcode == '1': 
         imgList = [glob.glob("./data/"+testset[setcode]+'[0-9]'+".jpeg")]

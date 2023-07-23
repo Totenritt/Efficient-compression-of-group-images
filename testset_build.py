@@ -98,10 +98,10 @@ def Generate_Naive_Testset_Scaling(img):
     return imgList
 
 def Generate_Naive_Testset_Translation(img):
-    STEP_SIZE = 55.5
+    STEP_SIZE = 2
     IMG_WIDTH = img.shape[0]
     IMG_LENGTH = img.shape[1]
-    BORDER = IMG_WIDTH // 3 
+    BORDER = 0 
     MOTHER_WIDTH = IMG_WIDTH - 2 * BORDER
     MOTHER_LENGTH = IMG_LENGTH - 2 * BORDER
     MatrixLeft = np.float32([[1, 0, -STEP_SIZE], [0, 1, 0]]) #tranformation matrix up 
@@ -117,15 +117,15 @@ def Generate_Naive_Testset_Translation(img):
         imgList.append(cropped)
     for count,image in enumerate(imgList):
         if count ==0:
-            filename = './data/transformed_img_original' + '.jpeg'
+            filename = './data/transformed_img1' + '.jpeg' #original
         elif count == 1:
-            filename = './data/transformed_img_down'+'.jpeg'
+            filename = './data/transformed_img2'+'.jpeg' #down
         elif count ==2:
-            filename = './data/transformed_img_up'+'.jpeg'
+            filename = './data/transformed_img3'+'.jpeg' #up 
         elif count ==3:
-            filename = './data/transformed_img_right'+'.jpeg'
+            filename = './data/transformed_img4'+'.jpeg' #right
         elif count ==4:
-            filename = './data/transformed_img_left'+'.jpeg'
+            filename = './data/transformed_img5'+'.jpeg' #left
         cv.imwrite(filename, image)
     return imgList
 
@@ -406,7 +406,7 @@ def generatePredictImg(parentImg, childImg, toPrint, filename):
     '''
     BFres, res, Homography = RANSAC_match_sift(parentImg, childImg)
     childWidth,childHeight,childChannel = childImg.shape
-    childReg = cv.warpPerspective(parentImg, Homography, (childHeight, childWidth))
+    childReg = cv.warpPerspective(parentImg, Homography, (childHeight, childWidth), flags=cv.INTER_LANCZOS4)
     cv.imwrite('./data/'+filename+'_predicted.jpeg', childReg)
     childImg = childImg.astype(int)
     childReg = childReg.astype(int)
@@ -427,7 +427,6 @@ def codeResidual(img):
     #write the image 
     cv.imwrite('./data/residual/offsetImg.ppm', img)
     return img
-
 
 if __name__ == '__main__':
     # img = cv.imread('./data/flower.jpg', cv.IMREAD_UNCHANGED)
@@ -484,20 +483,20 @@ if __name__ == '__main__':
 # simMatrix = CalcSimilarityHist(testSet)
 # print(simMatrix)
 
-    img = cv.imread('./data/street.jpeg', cv.IMREAD_UNCHANGED)
-    rotation_test_set = Generate_Naive_Testset_Rotation(img)
-    simMatrix = CalcSimilarityHist(rotation_test_set)
-    print(simMatrix)
+    # img = cv.imread('./data/street.jpeg', cv.IMREAD_UNCHANGED)
+    # rotation_test_set = Generate_Naive_Testset_Rotation(img)
+    # simMatrix = CalcSimilarityHist(rotation_test_set)
+    # print(simMatrix)
 
 # img = cv.imread('pawel.jpeg')
 # testSet = Generate_Naive_Testset_Scaling(img)
 # simMatrix = CalcSimilarityHist(testSet)
 # print(simMatrix)
 
-# img = cv.imread('./data/pawel.jpeg')
-# testSet = Generate_Naive_Testset_Translation(img)
-# simMatrix = CalcSimilarityHist(testSet)
-# print(simMatrix)
+    img = cv.imread('./data/rotated_img1.jpeg')
+    testSet = Generate_Naive_Testset_Translation(img)
+    simMatrix = CalcSimilarityHist(testSet)
+    print(simMatrix)
 
     # img = cv.imread('./data/mountain.jpeg')
     # testSet = Generate_Testset_Two(img)
@@ -509,10 +508,10 @@ if __name__ == '__main__':
     # simMatrix = CalcSimilarityHist(testSet)
     # print(simMatrix)
 
-    # img = cv.imread('./data/rotated_img1.jpeg')
-    # img = img.astype(np.uint16) + 255 
-    # # offsetImg = cv.normalize(img, None, 0, 2**16-1, cv.NORM_MINMAX, dtype=cv.CV_16U)
-    # cv.imwrite('./data/residual/residual.ppm', img)
-    # img = img - 255
-    # img = img.astype(np.uint8)
-    # cv.imwrite('./data/residual/residual.ppm', img)
+    img = cv.imread('./data/rotated_img1.jpeg')
+    img = img.astype(np.uint16) + 255 
+    offsetImg = cv.normalize(img, None, 0, 2**16-1, cv.NORM_MINMAX, dtype=cv.CV_16U)
+    cv.imwrite('./data/residual/residual.ppm', img)
+    img = img - 255
+    img = img.astype(np.uint8)
+    cv.imwrite('./data/residual/residual.ppm', img)
