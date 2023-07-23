@@ -1,14 +1,12 @@
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
-import imutils
 import glob
 import testset_build
-import string 
 import re
 import subprocess
 import mst
+
 def downsampling():
     '''
     down sample the phone.jpeg'''
@@ -50,8 +48,8 @@ def encoder(parentName, childName):
     childImg = cv.imread('./data/' +childName +'.jpeg')
     #imread predicted image
     predictImg = cv.imread('./data/'+childName+'_predicted.jpeg')
-    #imwrite predicted image.ppm and cpmpress it
-    cv.imwrite('./data/'+childName+'.ppm',predictImg)
+    #imwrite predicted image.ppm and compress it
+    cv.imwrite('./data/'+childName+'.ppm', childImg)
     compressCmd = "kdu_compress -i ./data/"+childName+".ppm -o ./data/"+childName+".jp2"
     subprocess.run(compressCmd, shell=True)
     #generate residual image
@@ -64,6 +62,7 @@ def encoder(parentName, childName):
     # residualImg = testset_build.codeResidual(diffMatrix)
     # command used to get threshold parameter
     thresholdCmd = "kdu_compress -i ./data/residual/offsetImg.ppm -o ./data/residual/offsetImg_output.jp2 Clayers=20"
+    # kdu_compress -i image.pgm -o out.j2c -rate 1.0,0.5,0.25
     output = subprocess.check_output(thresholdCmd, shell=True)
     threshold = findLayerThresholds(output)
     return threshold
@@ -83,6 +82,7 @@ def decoder(threshold, childName, Homography):
         subprocess.run(expandCmd, shell=True)
         decodedImg = cv.imread('./data/residual/decodedImg_'+str(i)+'.ppm',-1) # -1 means read the image with original data format, in this case uint16
         decodedImg= decodedImg.astype(int) - 255
+        decodedImg = np.clip(decodedImg,0,510)
         predictedImg = predictedImg.astype(int)
         finalImg = decodedImg + predictedImg
         finalImg = np.clip(finalImg,0,255)
@@ -141,11 +141,15 @@ def main():
         g = mst.Graph(len(imgList))
         g.graph = mst.CalcSimilarityHist(imgList)
     mstList = g.primMST()
+    # encode the set
     for i in range(1, len(mstList)):
         parentName = setName + str(mstList[i]+1)
         childName = setName + str(i+1)
         Homography = predict(parentName, childName)
-        threshold = encoder(parentName, childName)
+        if i == 1:
+            threshold = encoder(parentName, childName)
+        else:
+            encoder(parentName, childName)
         decoder(threshold, childName, Homography)
 
 if __name__ == '__main__':
