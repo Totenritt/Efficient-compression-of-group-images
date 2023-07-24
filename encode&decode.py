@@ -72,12 +72,13 @@ def encoder(parentName, childName):
 def decoder(threshold,parentName, childName, Homography, Height, Width):
     # kakadu command for decode
     decodedCmd = "kdu_expand -i ./data/"+parentName+".jp2 -o ./data/"+parentName+"_decoded"+".ppm"
-    subprocess.run(decodedCmd, shell=True)
+    output = subprocess.check_output(decodedCmd, shell=True)
+    threshold = findLayerThresholds(output)
     parentImg = cv.imread("./data/"+parentName+"_decoded"+".ppm")
     predictedImg = cv.warpPerspective(parentImg, Homography, (Height, Width), flags = cv.INTER_LANCZOS4)
-    # kakadu command for compress file 
-    compressCmd = "kdu_compress -i ./data/residual/offsetImg.ppm -o ./data/residual/offsetImg_output.jp2 -slope " + threshold
-    subprocess.run(compressCmd, shell=True)
+    # # kakadu command for compress file 
+    # compressCmd = "kdu_compress -i ./data/residual/offsetImg.ppm -o ./data/residual/offsetImg_output.jp2 -slope " + threshold
+    # subprocess.run(compressCmd, shell=True)
     for i in range(1,21):
         # kakadu command for expand file
         expandCmd = 'kdu_expand -i ./data/residual/offsetImg_output.jp2 -o ./data/residual/decodedImg_'+ str(i) +'.ppm -layers ' + str(i)
@@ -91,25 +92,23 @@ def decoder(threshold,parentName, childName, Homography, Height, Width):
         finalImg = finalImg.astype(np.uint8)
         cv.imwrite('./data/residual/'+childName + 'finalImg'+str(i)+'.ppm', finalImg)
     # make boundary blur
-    boundaryFlag = input('Whether to make boundary blur on clearest image 1 for yes else for no \n')
-    boundaryFlag = int(boundaryFlag)
+    boundaryFlag = 1
     if boundaryFlag == 1:
-        BlurSize = input('Please input a Blur Size (Only positive odd number, 3, 5, 7...)\n')
-        BlurSize = int(BlurSize)
+        BlurSize = 7 
         if int(BlurSize) % 2 != 1:
             raise ValueError
         # get boundary mask
-        img255 = np.zeros((Height,Weight))
+        img255 = np.zeros((Height,Width))
         img255 = img255.astype(np.uint8)
         img255.fill(255)
-        imgMatrix = cv.warpPerspective(img255, Homography, (Weight, Height), flags =cv.INTER_LANCZOS4)
+        imgMatrix = cv.warpPerspective(img255, Homography, (Width, Height), flags =cv.INTER_LANCZOS4)
         imgMatrixBlur = cv.blur(imgMatrix,(BlurSize,BlurSize))
-        imgBoundaryMask = np.zeros((Height,Weight))
+        imgBoundaryMask = np.zeros((Height,Width))
         imgBoundaryMask = imgBoundaryMask.astype(np.uint8)
-        imgNonBoundaryMask = np.zeros((Height,Weight))
+        imgNonBoundaryMask = np.zeros((Height,Width))
         imgNonBoundaryMask = imgNonBoundaryMask.astype(np.uint8)
         for i in range(0, Height):
-            for j in range(0, Weight):
+            for j in range(0, Width):
                 if imgMatrixBlur[i][j] > 0 and imgMatrixBlur[i][j] < 255:
                     imgBoundaryMask[i][j] = 255
                     imgNonBoundaryMask[i][j] = 0
@@ -122,7 +121,7 @@ def decoder(threshold,parentName, childName, Homography, Height, Width):
         img2GuessBlur = cv.bitwise_and(img2GuessBlur,img2GuessBlur, mask = imgBoundaryMask)
         img2BoundaryBlur = cv.bitwise_and(imgresidual, imgresidual, mask = imgNonBoundaryMask)
         imgfinal = img2GuessBlur + img2BoundaryBlur
-        cv.imwrite('./data/residual/'+childName + 'finalImg'+str(20)+'BryBlur'+'.ppm', imgfinal)
+        cv.imwrite('./data/residual/'+childName + 'finalImg'+str(20)+'.ppm', imgfinal)
     return 0 
 
 def main():
@@ -134,13 +133,16 @@ def main():
         raise ValueError
     testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_', '6':'transformed_img'}
     setName = testset[setcode]
+    imgList = [cv.imread(file) for file in glob.glob("./data/"+setName+'[0-9]'+".jpeg")]#this method arrange image in a random order, now it's just used for extract testset size
+    g = mst.Graph(len(imgList))
+    setSize = len(imgList)
+    imgList = []  
+    for i in range(setSize):
+        originalImg = cv.imread("./data/"+setName+str(i+1)+".jpeg")
+        imgList.append(originalImg)
     if methodcode == '1': 
-        imgList = [glob.glob("./data/"+testset[setcode]+'[0-9]'+".jpeg")]
-        g = mst.Graph(len(imgList[0]))
         g.graph = mst.CalcSimilaritySIFT(imgList)
     elif methodcode == '2':
-        imgList = [cv.imread(file) for file in glob.glob("./data/"+testset[setcode]+'[0-9]'+".jpeg")]
-        g = mst.Graph(len(imgList))
         g.graph = mst.CalcSimilarityHist(imgList)
     mstList = g.primMST()
     # encode the set
@@ -148,15 +150,8 @@ def main():
         parentName = setName + str(mstList[i]+1)
         childName = setName + str(i+1)
         Homography = predict(parentName, childName)
-        if i == 1:
-            threshold = encoder(parentName, childName)
-        else:
-            encoder(parentName, childName)
-        decoder(threshold, childName, Homography)
+        threshold,Width,Height = encoder(parentName, childName)
+        decoder(threshold, parentName, childName, Homography, Height, Width)
 
 if __name__ == '__main__':
     main()
-
-
-
-

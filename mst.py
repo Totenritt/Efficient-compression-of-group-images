@@ -145,14 +145,16 @@ if __name__ == '__main__':
 	if ord(setcode) < 49 or ord(setcode) >53:
 		raise ValueError
 	testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_img', '5':'testset2_img'}
-	
+	imgList = [glob.glob("./data/"+testset[setcode]+"[0-9].jpeg")]
+	setSize = len(imgList)
+	imgList = []
+	for i in range(setSize):
+		originalImg = cv.imread("./data/"+testset[setcode]+str(i)+".jpeg")
+		imgList.append(originalImg)
+	g = Graph(len(imgList))
 	if methodcode == '1': 
-		imgList = [glob.glob("./data/"+testset[setcode]+"*.jpeg")]
-		g = Graph(len(imgList[0]))
 		g.graph = CalcSimilaritySIFT(imgList)
 	elif methodcode == '2':
-		imgList = [cv.imread(file) for file in glob.glob("./data/"+testset[setcode]+'[0-9]'+".jpeg")]
-		g = Graph(len(imgList))
 		g.graph = CalcSimilarityHist(imgList)
 	print(g.graph)
 	parent = g.primMST()
