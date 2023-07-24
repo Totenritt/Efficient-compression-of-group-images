@@ -52,6 +52,7 @@ def extractImg(setName):
 def test():
 	originalImgList,compressedImgList = extractImg('rotated_img')
 	value = groupPsnr(originalImgList, compressedImgList)
+	print(value)
 	return None
 
 def main():
