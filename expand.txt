@@ -1,0 +1,399 @@
+Usage:
+  "kdu_expand ...
+   -i <compressed file>
+       Currently accepts raw code-stream files and code-streams wrapped in the
+       JP2 or JPX file formats.  We no longer identify the file type based on
+       its suffix.  Instead, we first try to open the file as a JP2-family
+       file.  If this fails, we open it as a raw code-stream.  The only
+       drawback of this approach is that raw code-streams are opened and closed
+       twice.
+   -o <file 1>,...
+       One or more output files. If multiple files are provided, they must be
+       separated by commas. Any spaces will be treated as part of the file
+       name.  This argument is not mandatory; if no output files are given, the
+       decompressor will run completely but produce no image output.  This can
+       be useful for timing purposes.  Currently accepted image file formats
+       are: TIFF, RAW (big-endian), RAWL (little-endian), BMP, PGM and PPM
+       (including PNM files with up to 16 bit precision), and PFM (floating
+       point) files, as determined by the suffix.  There need not be sufficient
+       image files to represent all image components in the code-stream.  Raw
+       files are written with the sample bits in the least significant bit
+       positions of an 8, 16, 24 or 32 bit word, depending on the bit-depth. 
+       For signed data, the word is sign extended. The word organization is
+       big-endian if the file suffix is ".raw" and little-endian if the file
+       suffix is ".rawl".
+          There can be cases where you wish to explicitly specify a different
+       precision for the saved sample values to the precision which is recorded
+       internally in the compressed image (`Nprecision' parameter attribute). 
+       You can make this happen by providing the `-fprec' argument, described
+       below.
+   -fprec [<comp-0 precision>][M|L|F<E>][,[<comp-1 precision>]...]
+       You can use this argument to adjust the way in which sample values are
+       recorded in the output file(s).  The argument takes a comma-separated
+       list of precision specifiers.  The list can contain more specifiers than
+       the number of image components in the collection of input files.  If it
+       contains fewer values, the last value is replicated as required to
+       provide precision forcing information for all image components.  You can
+       supply the special value of 0 for any component (including the last one
+       in the comma-separated list, which gets replicated), meaning that the
+       original precision should be left untouched.  You can achieve the same
+       thing by omitting everything for the component, so long as it is not the
+       last one.  Thus, for example "16,0,8M" has the same meaning as "16,,8M".
+         The optional suffix L, M or F<E> determines how any precision forcing
+       conversion is performed.  `M' means sample values (at original
+       precision) are effectively scaled by a power of 2 so as to match the
+       forced precision; this means that the most significant bits align before
+       and after precision forcing.  This also means that forcing to a reduced
+       precision will cause rounding and discard of least significant bits.  If
+       the `L' suffix is used, the precision forcing algorithm aligns least
+       significant bits (this is also the default, in case there is no suffix).
+       What this means is that there is no scaling, but forcing to a reduced
+       precision may cause truncation of values which would not otherwise be
+       representable in the forced precision.  On the other hand, forcing to a
+       higher precision may allow some values which would ordinarily exceed the
+       original dynamic range (e.g., due to quantization errors) to be
+       preserved.
+         The F<E> suffix means that the decoded sample values, at their
+       original precision N, should be considered as N-bit integers whose bits
+       should be re-interpreted as N-bit floating point values, with E exponent
+       bits and N-1-E mantissa bits.  This (potentially custom) floating point
+       representation involves a sign bit, followed by a true (signed) exponent
+       that has been offset by 2^{E-1}-1 so as to leave an unsigned E-bit
+       integer, follwed by the N-1-E mantissa bits.  Depending on the output
+       file format, the re-interpreted floating point values usually need to be
+       converted to integer image samples during image writing; the precision
+       of these written image samples is the P value to which the F<E> suffix
+       is appended.  It is allowed (even encouraged) to omit the P value
+       altogether, so that the conversion specifier for a component reduces to
+       "F5" or "F8", for example.  In this case, the file writer is free to
+       select the most appropriate value for P, based on the file format and
+       (potentially) the original input precision.  For example, an
+       8-bit/sample image file format would automatically select P=8, a raw
+       file writer would automatically select P=N and a TIFF file writer would
+       automatically select P=32.
+         In the case of signed representations, the conversion from
+       re-interpreted floats identified via the F<E> expression to P-bit
+       integer image samples is performed after multiplying by 2^P-1, so that
+       floating point values in the range 0.0 to 1.0 map to image sample values
+       in the range 0 to 2^P-1.  When writing signed image sample values, the
+       scaling factor is 2^{P-1}-1, so that the full range of P-bit signed
+       integers corresponds to floating point values from (approximately) -1.0
+       to (exactly) 1.0.  If the output image file can store floating point
+       values directly, the conversion to scaled integers is not required --
+       TIFF and PFM files, for example, can record floating point values
+       directly.  In general, however, the written format may involve a
+       different number of exponent or mantissa bits -- e.g., IEEE 32-bit
+       floats might be written from data with N=16 and E=5 (half-floats).  For
+       raw output files, the N-bit floating point source values with E exponent
+       bits are converted to P-bit floating point values with the same number
+       of exponent bits and then written to the output file.
+         In practice, you would not normally specify an F<E> suffixed precision
+       forcing specifier explicitly, unless you are working with raw
+       codestreams.  Data that have been compressed as integer-reinterpreted
+       floats should generally have been compressed using the Part-2 non-linear
+       transform feature, represented by NLT marker segments that specify the
+       SMAG type code (sign-magnitude to 2's-complement transform).  NLT marker
+       segments require Part-2 support, which means that the resulting
+       codestream should have been embedded in a JPX file, in which case the
+       "Pixel Format" box should provides sufficient information for this
+       demo-app to recover the floating point format.  In this case, the F<E>
+       suffix is effectively added for you, even if you do not specify `-fprec'
+       at all.
+         It is worth noting the difference between saving in a file format
+       whose words must use one of a number of fixed precisions and explicitly
+       forcing the precision to be used for each written word.  For example, if
+       you save samples with `Nprecision' = 4 to a PGM file, the samples are
+       clipped to their nominal range and written into the most significant bit
+       positions of each 8-bit byte.  If you also specify "-fprec 8L" or just
+       "-fprec 8", the sample values are written into the least significant 4
+       bits and only clipped to the range which can be accommodated by each
+       8-bit byte.  If you were to save with "-fprec 6", the least significant
+       2 bits in each written byte would be 0, and sample values up to 4 times
+       as large as the nominal range can be preserved.
+         An important application for the `-fprec' option is saving samples
+       with unusual precisions to TIFF files.  For example, if you save data
+       with `Nprecision'=11 to a TIFF file, the 11 bits of each written sample
+       are packed tightly into each row of output bytes.  The complex packing
+       rule is often not correctly implemented by third party image readers,
+       but you can use "-fprec 16L" or "-fprec 16M", for example, to force each
+       sample to be saved into its own 16-bit word (occupying the 11 least
+       significant bits or the 11 most significant bits, respectively); of
+       course, the TIFF file will then indicate that the data has 16-bit
+       precision, which is not quite correct, but this is the way in which many
+       third party applications expect to find high bit-depth data in TIFF
+       files.
+         Another useful application of the `-fprec' option is to force raw
+       files containing samples with 17 to 24 bits of precision to be saved
+       into 32-bit words, rather than 24 bit words, simplifying the interaction
+       with other applications.
+   -jpx_layer <compositing layer index>
+       By default, the first compositing layer of a JPX file is used to
+       determine the colour channels to decompress.  This argument allows you
+       to identify a different compositing layer (note that layer indices start
+       from 0).  Plain JP2 files are treated as having only one compositing
+       layer.  This argument is ignored if the input is a raw code-stream.  It
+       is also ignored if `-raw_components' is used.
+   -raw_components [<codestream index>]
+       By default, when a JP2/JPX file is decompressed, only those components
+       which contribute to colour channels in the first compositing layer (or
+       the layer identified by `-jpx_layer') are decompressed (one for
+       luminance, three for RGB, etc.), applying any required palette mapping
+       along the way.  In some cases, however, it may be desirable to
+       decompress all of the raw image components available from a code-stream.
+       Use this switch to accomplish this.  There will then be no palette
+       mapping in this case.  The optional parameter may be used to specify the
+       index of the code-stream to be decompressed.  This is relevant only for
+       JPX files which may contain multiple code-streams.  By default, the
+       first code-stream (index 0) is decompressed.
+   -codestream_components -- suppress multi-component/colour xforms
+       This flag allows you to gain access to the decompressed codestream image
+       components, as they appear after inverse spatial wavelet transformation,
+       prior to the inversion of any Part 1 colour transform (RCT/ICT
+       decorrelation transforms) or Part 2 multi-component transform.  To
+       understand this flag, it is helpful to know that there are two types of
+       image components: "codestream image components" and "output image
+       components".  The output image components are the ones which the content
+       creator intended you to reconstruct, but it is sometimes interesting to
+       reconstruct the codestream image components.  Thus, in the normal
+       output-oriented mode, if you ask for the second image component (e.g.,
+       using `-skip_components') of a colour image, you will receive the green
+       channel, even if this has to be recovered by first decompressing
+       luminance and chrominance channels.  If you ask for codestream
+       components, however, you will receive the Cb (blue colour difference)
+       component, assuming that the ICT (YCbCr) transform was used during
+       compression.  It should be noted that the `-codestream_components' flag
+       cannot be used in conjunction with JP2/JPX files unless
+       `-raw_components' is also specified.  `-raw_components' by itself,
+       however, recovers only the "output image components" defined by the
+       codestream, as opposed to its "codestream image components".
+   -no_seek
+       By default, the system will try to exploit pointer information in the
+       code-stream to seek over irrelevant elements.  This flag turns this
+       behaviour off, which may result in higher memory consumption or even
+       failure to read non-linear file formats, but avoids the potential for
+       wasted disk accesses.
+   -rotate <degrees>
+       Rotate image following decompression. Must be multiple of 90 degrees.
+   -flip -- horizontally flip the image
+       Horizontally flips the image prior after decompression.  If "-rotate" is
+       also provided, horizontal flipping is notionally performed second, after
+       any rotation.
+   -rate <bits per pixel>
+       Maximum bit-rate, expressed in terms of the ratio between the total
+       number of compressed bits (including headers) and the product of the
+       largest horizontal and  vertical image component dimensions. Note that
+       we use the original dimensions of the compressed image, regardless or
+       resolution scaling and regions of interest.  Note CAREFULLY that the
+       file is simply truncated to the indicated limit, so that the effect of
+       the limit will depend strongly upon the packet sequencing order used by
+       the code-stream.  The effect of the byte limit may be modified by
+       supplying the `-simulate_parsing' flag, described below.
+   -simulate_parsing
+       If this flag is supplied, discarded resolutions, image components or
+       quality layers (see `-reduce' and `-layers') will not be counted when
+       applying any rate limit supplied via `-rate' and when reporting overall
+       bit-rates.  Also, if a reduced spatial region of the image is required
+       (see `-region'), only those bytes which are relevant to that region are
+       counted when applying bit-rate limits and reporting overall bit-rates. 
+       The effect is intended to be the same as if the code-stream were first
+       parsed to remove the resolutions, components, quality layers or
+       precincts which are not being used.  Note, however, that this facility
+       might not currently work as expected if the image happens to be tiled.
+   -skip_components <num initial image components to skip>
+       Skips over one or more initial image components, reconstructing as many
+       remaining image components as can be stored in the output image file(s)
+       specified with "-o" (or all remaining components, if no "-o" argument is
+       supplied).  This argument is not meaningful if the input is a JP2/JPX
+       file, unless the `-raw_components' switch is also selected.
+   -no_alpha -- do not decompress alpha channel
+       By default, an alpha channel which is described by the source file will
+       be decompressed and written to the output file(s) if possible.  This is
+       relevant only for output file formats which can store alpha.  The
+       present argument may be used to suppress the decompression of alpha
+       channels.
+   -layers <max layers to decode>
+       Set an upper bound on the number of quality layers to actually decode.
+   -reduce <discard levels>
+       Set the number of highest resolution levels to be discarded.  The image
+       resolution is effectively divided by 2 to the power of the number of
+       discarded levels.
+   -region {<top>,<left>},{<height>,<width>}
+       Establish a region of interest within the original compressed image. 
+       Only the region of interest will be decompressed and the output image
+       dimensions will be modified accordingly.  The coordinates of the
+       top-left corner of the region are given first, separated by a comma and
+       enclosed in curly braces, after which the dimensions of the region are
+       given in similar fashion.  The two coordinate pairs must be separated by
+       a comma, with no intervening spaces.  All coordinates and dimensions are
+       expressed relative to the origin and dimensions of the high resolution
+       grid, using real numbers in the range 0 to 1.
+   -precise -- forces the use of 32-bit representations.
+       By default, 16-bit data representations will be employed for sample data
+       processing operations (colour transform and DWT) whenever the image
+       component bit-depth is sufficiently small.
+   -fussy
+       Encourage fussy code-stream parsing, in which most code-stream
+       compliance failures will terminate execution, with an appropriate error
+       message.
+   -resilient
+       Encourage error resilient processing, in which an attempt is made to
+       recover from errors in the code-stream with minimal degradation in
+       reconstructed image quality.  The current implementation should avoid
+       execution failure so long as only a single tile-part was used and no
+       errors are found in the main or tile header.  The implementation
+       recognizes tile-part headers only if the first 4 bytes of the marker
+       segment are correct, which makes it extremely unlikely that a
+       code-stream with only one tile-part will be mistaken for anything else. 
+       Multiple tiles or tile-parts can create numerous problems for an error
+       resilient decompressor; complete failure may occur if a multi-tile-part
+       code-stream is corrupted.
+   -resilient_sop
+       Same as "-resilient" except that the error resilient code-stream parsing
+       algorithm is informed that it can expect SOP markers to appear in front
+       of every single packet, whenever the relevant flag in the Scod style
+       byte of the COD marker is set.  The JPEG2000 standard interprets this
+       flag as meaning that SOP markers may appear; however, this does not give
+       the decompressor any idea where it can expect SOP markers to appear.  In
+       most cases, SOP markers, if used, will be placed in front of every
+       packet and knowing this a priori can improve the performance of the
+       error resilient parser.
+   -num_threads <#default threads>[,<#domain threads>[T|C]...]
+       Use this argument to gain explicit control over multi-threaded or
+       single-threaded processing configurations.  The special value of 0 may
+       be used to specify that you want to use the conventional single-threaded
+       processing machinery -- i.e., you don't want to create or use a
+       threading environment.  Otherwise, you must supply a positive integer
+       for the first argument, identifying the number of threads (including the
+       main application thread) that have no preference as to where they do
+       work, and you have the option also to specify the number of additional
+       threads that should be assigned a preference to doing sample data
+       transform processing (`T' suffix) or block decoding operations (`C'
+       suffix).  It is worth noting that "-num_threads 1" and "-num_threads 0"
+       both result in single-threaded processing, although the former creates
+       an explicit threading environment and uses it to schedule the processing
+       steps, even if there is only one actual thread of execution.
+          For effective use of parallel processing resources, you should
+       consider creating at least one thread for each CPU; you should also
+       consider using the `-double_buffering' option to minimize the amount of
+       time threads might potentially sit idle.  Assigning work domain
+       preferences to threads is an option that could be interesting to play
+       around with, since this might lead to better utilization of processor
+       caches.
+          If the `-num_threads' argument is not supplied explicitly, the
+       default behaviour is to create a threading environment only if the
+       system offers multiple CPU's (or virtual CPU's), with one thread per
+       CPU.  However, this default behaviour depends upon knowledge of the
+       number of CPU's which are available -- something which cannot always be
+       accurately determined through system calls.  The default value might
+       also not yield the best possible throughput.
+   -double_buffering <stripe height>
+       This option is intended to be used in conjunction with `-num_threads'. 
+       From Kakadu version 7, double buffering is activated by default in
+       multi-threaded processing environments, but you can disable it by
+       supplying 0 to this argument.
+          Without double buffering, DWT operations will all be performed by the
+       single thread which "owns" the multi-threaded processing group.  For a
+       small number of processors, this may be acceptable, or even optimal,
+       since the DWT is generally quite a bit less CPU intensive than block
+       decoding (which is always spread across multiple threads, if available)
+       and synchronous single threaded DWT operations can improve memory access
+       locality.  However, even for a small number of threads, the amount of
+       thread idle time can be reduced by specifying the `-double_buffering'
+       option.  In this case, a certain number of image rows in each image
+       component are actually double buffered, so that one set can be processed
+       by colour transformation and sample writing operations, while the other
+       set is generated by the DWT synthesis engines, which themselves feed off
+       the block decoding engines.  The number of rows in each component which
+       are to be double buffered is known as the "stripe height", supplied as a
+       parameter to this argument.  The stripe height can be as small as 1, but
+       this may add quite a bit of thread context switching overhead.  For this
+       reason, a stripe height in the range 8 to 64 is recommended.
+          The default policy for multi-threaded environments is to pass the
+       special value of -1 to `kdu_multi_synthesis' so that a good value will
+       be selected automatically.
+   -progress <interval>
+       This option is useful when decompressing massive images; it allows you
+       to receive feedback each time a vertical row of tiles has been
+       processed, but potentially more frequently, depending upon the
+       <interval> parameter.  The <interval> parameter indicates the maximum
+       number of lines that can be pulled from the compression machinery before
+       some progress is provided -- if this value is smaller than the tile
+       height, you will receive periodic information about the percentage of
+       the vertical row of tiles which has been processed.
+   -cpu <coder-iterations>
+       Times end-to-end execution and, optionally, the block decoding
+       operation, reporting throughput statistics.  If `coder-iterations' is 0,
+       the block decoder will not be timed, leading to the most accurate
+       end-to-end system execution times.  Otherwise, `coder-iterations' must
+       be a positive integer -- larger values will result in more accurate
+       estimates of the block decoder processing time, but degrade the accuracy
+       of end-to-end execution times.  Note that end-to-end times include image
+       file writing, which can have a dominant impact.  To avoid this, you may
+       specify no output files at all.  Note also that timing information may
+       not be at all reliable unless `-num_threads' is 0 or 1.  Since the
+       default value for the `-num_threads' argument may be greater than 1, you
+       should explicitly set the number of threads to 0 before collecting
+       timing information.
+   -mem -- Report memory usage
+   -mem_limit [<max kB>]
+       Without any parameter, this argument causes memory information to be
+       printed, as deduced via a `kdu_membroker' interface.  The reported value
+       may be quite a bit larger than the actual amount of memory allocated,
+       since it represents the cumulative memory allocation permission that was
+       sought by various parts of the Kakadu system; many allocation centres
+       request permission to allocate somewhat more memory than they need, so
+       as to minimize the frequency of requests.
+          The optional parameter allows you to hard limit the memory allocation
+       permissions globally.  The limit is supplied in kB (i.e. multiples of
+       1024 bytes).  You may find that processing is successful even if this
+       limit is somewhat smaller than the value printed with "-mem_limit" is
+       specified without a limit, because granting less memory allocation
+       permission to an internal module does not necessarily prevent it from
+       meeting its obligations.  However, when the limit is reduced
+       substantially, an appropriate error message can be expected.  This
+       provides a way to test robustness to memory allocation failures, but
+       also demonstrates Kakadu's ability to work within a complex and
+       potentially fragile system as a good citizen.
+   -stats -- Report parsed data stats by resolution & quality layer
+       This argument exercises the `kdu_tile::get_parsed_packet_stats'
+       function, new to Kakadu v6.1, to report the number of compressed bytes
+       (packet headers and packet bodies) parsed up to each quality layer
+       boundary, within each resolution.  If you decompress the enire image,
+       with no restrictions, the reported numbers should be independent of
+       random access or organizational properties of the codestream.  However,
+       if you decompress only a limited region of interest, limited number of
+       quality layers or limited resolution, the amount of data which actually
+       gets parsed depends on whether or not the codestream's precincts can be
+       randomly accessed and, if not, on the packet progression order used by
+       the codestream.
+   -no_res -- prevents resolution tags from being written
+       This is probably useful only when writing TIFF files that cannot be
+       opened using OSX Preview due to a bug in that app which causes it to
+       reject files containing Geo referencing and resolution tags at the same
+       time.
+   -com -- requests the printing of textual codestream comments.
+   -no_decode -- can only be used if no `-o' argument is supplied.
+       If this option is supplied, no actual decompression will occur; only the
+       codestream main header will be parsed for errors.  This could be useful
+       in conjunction with the `-com' argument, allowing codestream comments to
+       be printed without unnecessary extra processing.  By default,
+       decompression is performed even if there is no output file supplied via
+       `-o'.
+   -s <switch file>
+       Switch to reading arguments from a file.  In the file, argument strings
+       are separated by whitespace characters, including spaces, tabs and
+       new-line characters.  Comments may be included by introducing a `#' or a
+       `%' character, either of which causes the remainder of the line to be
+       discarded.  Any number of "-s" argument switch commands may be included
+       on the command line.
+   -record <file>
+       Record code-stream parameters in a file, using the same format which is
+       accepted when specifying the parameters to the compressor. Parameters
+       specific to tiles which do not intersect with the region of interest
+       will not generally be recorded.
+   -quiet -- suppress informative messages.
+   -version -- print core system version I was compiled against.
+   -v -- abbreviation of `-version'
+   -usage -- print a comprehensive usage statement.
+   -u -- print a brief usage statement."
+   

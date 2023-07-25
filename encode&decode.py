@@ -6,6 +6,7 @@ import testset_build
 import re
 import subprocess
 import mst
+import metric
 
 def downsampling():
     '''
@@ -23,12 +24,23 @@ def findLayerThresholds(inputByte):
     '''
     extract the threshold info from kakadu output log
     '''
+    # find layer threshold
     inputStr = str(inputByte) # convert the input Byte to str
     beginIndex = inputStr.find('Layer thresholds:') + 27 #find threshold begin index
     endIndex = inputStr.find('Processed') - 2 
     threshold = inputStr[beginIndex:endIndex]
     threshold = re.sub(r'[^0-9,]', '', threshold)
     return threshold
+
+def findBpp(inputByte):
+    # find bpp
+    inputStr = str(inputByte)
+    beginIndex = inputStr.find('= ') + 2 #find threshold begin index for encode set to +2
+    endIndex = inputStr.find('bits/pel')# find threshold end index for encode set to -2
+    bppStr = inputStr[beginIndex:endIndex]
+    bppStr = re.sub(r'[^0-9,.]', '', bppStr)
+    # bppList = [float(i) for i in bppStr.split(',')]
+    return float(bppStr)
 
 def predict(parentName, childName):
     '''
@@ -63,7 +75,7 @@ def encoder(parentName, childName):
     # convert image to 16bits, add 255 offset to residual image and same with name residual.ppm 
     # residualImg = testset_build.codeResidual(diffMatrix)
     # command used to get threshold parameter
-    thresholdCmd = "kdu_compress -i ./data/residual/offsetImg.ppm -o ./data/residual/offsetImg_output.jp2 Clayers=20"
+    thresholdCmd = "kdu_compress -i ./data/residual/offsetImg.ppm -o ./data/residual/offsetImg_output.jp2 Qstep=0.000001 Clayers=20"
     # kdu_compress -i image.pgm -o out.j2c -rate 1.0,0.5,0.25
     output = subprocess.check_output(thresholdCmd, shell=True)
     threshold = findLayerThresholds(output)
@@ -79,13 +91,14 @@ def decoder(threshold,parentName, childName, Homography, Height, Width):
     # # kakadu command for compress file 
     # compressCmd = "kdu_compress -i ./data/residual/offsetImg.ppm -o ./data/residual/offsetImg_output.jp2 -slope " + threshold
     # subprocess.run(compressCmd, shell=True)
+    bppList = []
     for i in range(1,21):
         # kakadu command for expand file
         expandCmd = 'kdu_expand -i ./data/residual/offsetImg_output.jp2 -o ./data/residual/decodedImg_'+ str(i) +'.ppm -layers ' + str(i)
-        subprocess.run(expandCmd, shell=True)
+        output = subprocess.check_output(expandCmd, shell=True)
+        bppList.append(findBpp(output))
         decodedImg = cv.imread('./data/residual/decodedImg_'+str(i)+'.ppm',-1) # -1 means read the image with original data format, in this case uint16
         decodedImg= decodedImg.astype(int) - 255
-        decodedImg = np.clip(decodedImg,0,510)
         predictedImg = predictedImg.astype(int)
         finalImg = decodedImg + predictedImg
         finalImg = np.clip(finalImg,0,255)
@@ -122,7 +135,23 @@ def decoder(threshold,parentName, childName, Homography, Height, Width):
         img2BoundaryBlur = cv.bitwise_and(imgresidual, imgresidual, mask = imgNonBoundaryMask)
         imgfinal = img2GuessBlur + img2BoundaryBlur
         cv.imwrite('./data/residual/'+childName + 'finalImg'+str(20)+'.ppm', imgfinal)
-    return 0 
+    return bppList 
+
+def comparisonGroup(originalImgList, setName):
+    '''
+    individually encode all images within set by jp2'''
+    for i in range(len(originalImgList)):
+        thresholdCmd = "kdu_compress -i ./data/" + setName + str(i+1)+ ".ppm -o ./data/comparison/"+setName + str(i+1)+ ".jp2 Clayers=20"
+        output = subprocess.check_output(thresholdCmd, shell=True)
+    bppList = [[] for i in range(len(originalImgList))]
+    for j in range(len(originalImgList)):
+        for i in range(1,21):
+            # kakadu command for expand file
+            expandCmd = 'kdu_expand -i ./data/comparison/'+setName+str(j+1)+'.jp2 -o ./data/comparison/'+ setName + str(j+1) +'decoded'+ str(i) +'.ppm -layers ' + str(i)
+            output = subprocess.check_output(expandCmd, shell=True)
+            bppList[j].append(findBpp(output))
+    return bppList
+
 
 def main():
     methodcode = input('Please input the MST method code \n 1 for SIFT\n 2 for Histgram\n')
@@ -137,6 +166,7 @@ def main():
     g = mst.Graph(len(imgList))
     setSize = len(imgList)
     imgList = []  
+    overAllBppList = []
     for i in range(setSize):
         originalImg = cv.imread("./data/"+setName+str(i+1)+".jpeg")
         imgList.append(originalImg)
@@ -151,7 +181,30 @@ def main():
         childName = setName + str(i+1)
         Homography = predict(parentName, childName)
         threshold,Width,Height = encoder(parentName, childName)
-        decoder(threshold, parentName, childName, Homography, Height, Width)
+        bppList = decoder(threshold, parentName, childName, Homography, Height, Width)
+        overAllBppList.append(bppList)
+        # print(bppList)
+    # encode the comparison group
+    cmprBppList = comparisonGroup(imgList, setName)
+    # plot the group PSNR vs bpp graph
+    meanBppList = np.mean(overAllBppList, axis = 0)
+    metric.groupPsnrPlot(setName, meanBppList)
+    return None
+
+def test():
+    setName = 'rotated_img' 
+    imgList = [cv.imread(file) for file in glob.glob("./data/"+setName+'[0-9]'+".jpeg")]#this method arrange image in a random order, now it's just used for extract testset size
+    setSize = len(imgList)
+    imgList = []  
+    for i in range(setSize):
+        originalImg = cv.imread("./data/"+setName+str(i+1)+".jpeg")
+        imgList.append(originalImg)
+    cmprBppList = comparisonGroup(imgList, setName)
+    return cmprBppList 
 
 if __name__ == '__main__':
-    main()
+    main() 
+    # test()
+    #to do list 
+    #add the first point (only prediction)
+    #add the comparison group
