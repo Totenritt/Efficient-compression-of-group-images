@@ -187,7 +187,8 @@ def main():
     # encode the comparison group
     cmprBppList = comparisonGroup(imgList, setName)
     # plot the group PSNR vs bpp graph
-    meanBppList = np.mean(overAllBppList, axis = 0)
+    meanBppList = list(np.mean(overAllBppList, axis = 0))
+    meanBppList = [0] + meanBppList
     metric.groupPsnrPlot(setName, meanBppList)
     return None
 
