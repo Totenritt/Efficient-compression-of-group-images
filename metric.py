@@ -43,14 +43,17 @@ def extractImg(setName):
 	comparisonImgList = []
 	for i in range(setSize):
 		originalImg = cv.imread("./data/"+ setName + str(i+1) +".jpeg")
-		predictedImg = cv.imread('./data/'+setName+str(i+2)+'_predicted.jpeg')
+		if i == 0:
+			pass
+		else:
+			predictedImg = cv.imread('./data/'+setName+str(i+1)+'_predicted.jpeg')
+			predictedImgList.append(predictedImg)
 		originalImgList.append(originalImg)	
-		predictedImgList.append(predictedImg)
 	compressedImgList = [[predictedImgList[i]] for i in range(len(originalImgList)-1)] # since 1st img is assumed mother, we don't have compressed img for mother, this leaves setSize - 1 list within compressedImgList
 	for i in range(len(originalImgList) - 1): # assuming img1 is the mother image
 		for j in range(0,20):
 			compressedImg = cv.imread("./data/residual/rotated_img"+str(i+2)+"finalImg"+str(j+1)+".ppm")
-			comparisonImg = cv.imread("")
+			# comparisonImg = cv.imread("")
 			compressedImgList[i].append(compressedImg)
 	return originalImgList,compressedImgList
 
@@ -68,7 +71,7 @@ def groupPsnrPlot(setName, meanBppList):
 	meanPsnrList = groupPsnr(originalImgList, compressedImgList)
 	fig, ax = plt.subplots()
 	ax.plot(meanBppList, meanPsnrList)
-	plt.show()
+	plt.show
 
 def main():
 	test()
@@ -82,4 +85,4 @@ def test2():
 
 if __name__ == "__main__":
 	# main()
-	test2()
+	test()
