@@ -162,7 +162,7 @@ def main():
     setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n 6 for transformed_img\n')
     if ord(setcode) < 49 or ord(setcode) >54:
         raise ValueError
-    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'phone_img', '6':'transformed_img'}
+    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_', '6':'transformed_img'}
     setName = testset[setcode]
     imgList = [cv.imread(file) for file in glob.glob("./data/"+setName+'[0-9]'+".jpeg")]#this method arrange image in a random order, now it's just used for extract testset size
     g = mst.Graph(len(imgList))
