@@ -8,6 +8,7 @@ import subprocess
 import mst
 import metric
 
+
 def downsampling():
     '''
     down sample the phone.jpeg'''
@@ -62,8 +63,9 @@ def encoder(parentName, childName):
     childWidth,childHeight,childChannel = childImg.shape
     #imread predicted image
     predictImg = cv.imread('./data/'+childName+'_predicted.jpeg')
-    #imwrite parent image.ppm and cpmpress it
+    #imwrite parent image.ppm and compress it
     cv.imwrite('./data/'+parentName+'.ppm',parentImg)
+    cv.imwrite('./data/'+childName+'.ppm',childImg)
     compressCmd = "kdu_compress -i ./data/"+parentName+".ppm -o ./data/"+parentName+".jp2"
     subprocess.run(compressCmd, shell=True)
     #generate residual image
@@ -105,7 +107,7 @@ def decoder(threshold,parentName, childName, Homography, Height, Width):
         finalImg = finalImg.astype(np.uint8)
         cv.imwrite('./data/residual/'+childName + 'finalImg'+str(i)+'.ppm', finalImg)
     # make boundary blur
-    boundaryFlag = 1
+    boundaryFlag = 0
     if boundaryFlag == 1:
         BlurSize = 7 
         if int(BlurSize) % 2 != 1:
@@ -160,7 +162,7 @@ def main():
     setcode = input('Please input the testset code \n 1 for cropped_img\n 2 for rotated_img\n 3 for zoomed_img \n 4 for set1 \n 5 for set2\n 6 for transformed_img\n')
     if ord(setcode) < 49 or ord(setcode) >54:
         raise ValueError
-    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'testset2_', '6':'transformed_img'}
+    testset = {'1':'cropped_img', '2':'rotated_img', '3':'zoomed_img', '4':'testset1_', '5':'phone_img', '6':'transformed_img'}
     setName = testset[setcode]
     imgList = [cv.imread(file) for file in glob.glob("./data/"+setName+'[0-9]'+".jpeg")]#this method arrange image in a random order, now it's just used for extract testset size
     g = mst.Graph(len(imgList))
@@ -186,11 +188,13 @@ def main():
         # print(bppList)
     # encode the comparison group
     cmprBppList = comparisonGroup(imgList, setName)
+    cmprBppList = np.mean(cmprBppList, axis = 0)
     # plot the group PSNR vs bpp graph
     meanBppList = list(np.mean(overAllBppList, axis = 0))
     meanBppList = [0] + meanBppList
-    metric.groupPsnrPlot(setName, meanBppList)
+    metric.groupPsnrPlot(setName, meanBppList, cmprBppList)
     return None
+
 
 def test():
     setName = 'rotated_img' 
