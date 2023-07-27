@@ -1,3 +1,4 @@
+
 # A Python3 program for
 # Prim's Minimum Spanning Tree (MST) algorithm.
 # The program is for adjacency matrix
@@ -26,14 +27,14 @@ def CalcSimilaritySIFT(imgList):
 	searchParams=dict(checks=50)
 	flann=cv.FlannBasedMatcher(indexParams,searchParams)
 
-	length = len(imgList[0])
+	length = len(imgList)
 	Similarity = np.zeros((length,length),dtype=np.float32)
 
 	for i in range(0,length):
-		sampleImage = cv.imread(imgList[0][i],0)
+		sampleImage = imgList[i]
 		kp1, des1 = sift.detectAndCompute(sampleImage, None)
 		for j in range(0,length):
-			queryImage = cv.imread(imgList[0][j],0)
+			queryImage = imgList[j]
 			kp2, des2 = sift.detectAndCompute(queryImage, None)
 			matches=flann.knnMatch(des1,des2,k=2)
 			(matchNum,matchesMask)=getMatchNum(matches,0.9)
@@ -159,4 +160,3 @@ if __name__ == '__main__':
 	print(g.graph)
 	parent = g.primMST()
 
-# Contributed by Divyanshu Mehta

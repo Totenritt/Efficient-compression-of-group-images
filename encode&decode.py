@@ -8,6 +8,7 @@ import subprocess
 import mst
 import metric
 
+
 def downsampling():
     '''
     down sample the phone.jpeg'''
@@ -62,8 +63,9 @@ def encoder(parentName, childName):
     childWidth,childHeight,childChannel = childImg.shape
     #imread predicted image
     predictImg = cv.imread('./data/'+childName+'_predicted.jpeg')
-    #imwrite parent image.ppm and cpmpress it
+    #imwrite parent image.ppm and compress it
     cv.imwrite('./data/'+parentName+'.ppm',parentImg)
+    cv.imwrite('./data/'+childName+'.ppm',childImg)
     compressCmd = "kdu_compress -i ./data/"+parentName+".ppm -o ./data/"+parentName+".jp2"
     subprocess.run(compressCmd, shell=True)
     #generate residual image
@@ -105,7 +107,7 @@ def decoder(threshold,parentName, childName, Homography, Height, Width):
         finalImg = finalImg.astype(np.uint8)
         cv.imwrite('./data/residual/'+childName + 'finalImg'+str(i)+'.ppm', finalImg)
     # make boundary blur
-    boundaryFlag = 1
+    boundaryFlag = 0
     if boundaryFlag == 1:
         BlurSize = 7 
         if int(BlurSize) % 2 != 1:
@@ -186,10 +188,13 @@ def main():
         # print(bppList)
     # encode the comparison group
     cmprBppList = comparisonGroup(imgList, setName)
+    cmprBppList = np.mean(cmprBppList, axis = 0)
     # plot the group PSNR vs bpp graph
-    meanBppList = np.mean(overAllBppList, axis = 0)
-    metric.groupPsnrPlot(setName, meanBppList)
+    meanBppList = list(np.mean(overAllBppList, axis = 0))
+    meanBppList = [0] + meanBppList
+    metric.groupPsnrPlot(setName, meanBppList, cmprBppList)
     return None
+
 
 def test():
     setName = 'rotated_img' 
